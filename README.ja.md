@@ -31,9 +31,10 @@ PicoRubyはsubmodule初期化済みのチェックアウトを指定します。
 上流のシェルコマンド展開の制限により、ビルド用パスでは空白やシェル特殊文字を拒否します。
 
 配布gemを試す場合は `gem build picoruby-cloudflare-template.gemspec`、
-`gem install ./picoruby-cloudflare-template-0.1.0.gem` の後、
+`gem install ./picoruby-cloudflare-template-0.1.0.pre.rc1.gem` の後、
 `picoruby-cloudflare new my-worker` を使えます。生成先で未公開版を解決するには `bundle install --local` を使用します。
-RubyGemsへの公開後は通常の `gem install picoruby-cloudflare-template` から開始できます。
+このリリース候補版を公開した後は `gem install picoruby-cloudflare-template --pre --version 0.1.0-rc1` でインストールできます。
+`VERSION` は `0.1.0-rc1` ですが、RubyGemsはメタデータとgemファイル名で `0.1.0.pre.rc1` に正規化します。
 
 ## 生成物とビルド設定
 
@@ -165,3 +166,7 @@ Ruby 4.0.5、Emscripten 5.0.7、Node.js 26.8.1、Wrangler 4.125.0。
 compatibility dateは固定Wranglerと組み合わせて確認した `2026-08-22` を使います。
 dry-runはworkerdを起動しないため、Wrangler/dateの更新時はローカルHTTP確認も必要です。
 PicoRubyやmruby submoduleのビルドAPI変更時には統合テストを再実行してください。
+
+## ライセンス
+
+このgemは [MIT License](LICENSE) で公開しています。

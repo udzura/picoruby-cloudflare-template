@@ -31,9 +31,10 @@ The build also checks the Emscripten version required by the mrbgem. Use a Node.
 Build paths containing spaces or shell metacharacters are rejected because of upstream shell command expansion limitations.
 
 To try a packaged gem, run `gem build picoruby-cloudflare-template.gemspec`, followed by
-`gem install ./picoruby-cloudflare-template-0.1.0.gem` and
+`gem install ./picoruby-cloudflare-template-0.1.0.pre.rc1.gem` and
 `picoruby-cloudflare new my-worker`. Use `bundle install --local` in the generated project to resolve the unpublished version.
-Once the gem is published to RubyGems, you can start with the usual `gem install picoruby-cloudflare-template`.
+After this release candidate is published, install it with `gem install picoruby-cloudflare-template --pre --version 0.1.0-rc1`.
+`VERSION` is `0.1.0-rc1`; RubyGems normalizes it to `0.1.0.pre.rc1` in gem metadata and filenames.
 
 ## Generated files and build configuration
 
@@ -165,3 +166,7 @@ Ruby 4.0.5, Emscripten 5.0.7, Node.js 26.8.1, and Wrangler 4.125.0.
 The compatibility date is `2026-08-22`, tested with the pinned Wrangler version.
 A dry-run does not start workerd, so verify local HTTP responses when updating Wrangler or the compatibility date.
 Rerun the integration tests when PicoRuby or the mruby submodule's build API changes.
+
+## License
+
+This gem is available under the [MIT License](LICENSE).

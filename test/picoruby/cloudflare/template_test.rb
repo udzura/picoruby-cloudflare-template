@@ -10,9 +10,10 @@ require "picoruby/cloudflare/template/exporter"
 
 class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
   test "VERSION" do
-    assert do
-      ::Picoruby::Cloudflare::Template.const_defined?(:VERSION)
-    end
+    version = ::Picoruby::Cloudflare::Template::VERSION
+    assert_equal "0.1.0-rc1", version
+    assert_equal "0.1.0.pre.rc1", Gem::Version.new(version).to_s
+    assert Gem::Version.new(version).prerelease?
   end
 
   setup do
@@ -30,6 +31,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
       assert_path_exist(File.join(destination, name))
     end
     assert_equal "my-worker", JSON.parse(File.read(File.join(destination, "package.json")))["name"]
+    assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0-rc1"'
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"
@@ -147,7 +149,8 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
 
   test "gem artifact file list includes CLI, dotfile template and runtime entry" do
     spec = Gem::Specification.load(File.expand_path("../../../picoruby-cloudflare-template.gemspec", __dir__))
-    %w[exe/picoruby-cloudflare templates/project/gitignore.erb templates/runtime/index.js lib/picoruby/cloudflare/build.rb].each do |name|
+    assert_equal ["MIT"], spec.licenses
+    %w[LICENSE exe/picoruby-cloudflare templates/project/gitignore.erb templates/runtime/index.js lib/picoruby/cloudflare/build.rb].each do |name|
       assert_include spec.files, name
     end
   end
