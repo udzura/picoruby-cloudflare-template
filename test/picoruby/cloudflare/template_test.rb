@@ -31,6 +31,10 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     end
     assert_equal "my-worker", JSON.parse(File.read(File.join(destination, "package.json")))["name"]
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
+    config = File.read(File.join(destination, "build_config.rb"))
+    assert_include config, "conf.cloudflare_worker!"
+    assert_include config, "conf.picoruby_cloudflare_worker_wasm_mgem_dir"
+    assert_include config, "conf.mruby_rack_mgem_dir"
     assert !File.exist?(File.join(destination, "node_modules"))
     %w[Gemfile Rakefile build_config.rb app.rb].each do |name|
       output, status = Open3.capture2e(RbConfig.ruby, "-c", File.join(destination, name))

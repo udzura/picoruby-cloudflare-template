@@ -7,6 +7,18 @@ module Picoruby
 
       def self.validate_build_path!: (String path) -> String
 
+      module CrossBuild
+        attr_accessor picoruby_cloudflare_worker_wasm_mgem_dir: String?
+        attr_accessor mruby_rack_mgem_dir: String?
+        attr_writer picoruby_cloudflare_worker_wasm_revision: String?
+        attr_writer mruby_rack_mgem_revision: String?
+        def picoruby_cloudflare_worker_wasm_revision: () -> String
+        def mruby_rack_mgem_revision: () -> String
+        def cloudflare_worker!: () -> untyped
+        def worker_export: (app: String, output_dir: String, wrangler_config: String,
+                            ?environment: String?, ?project_root: String?) -> untyped
+      end
+
       class Generator
         def initialize: (String destination, ?name: String?, ?gem_path: String?) -> void
         def generate: () -> String

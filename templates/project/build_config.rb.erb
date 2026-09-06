@@ -1,7 +1,12 @@
 require "picoruby/cloudflare/build"
 
 MRuby::CrossBuild.new("worker") do |conf|
-  conf.cloudflare_worker
+  # Optional overrides; set these before cloudflare_worker!:
+  # conf.picoruby_cloudflare_worker_wasm_mgem_dir = "vendor/picoruby-cloudflare-worker-wasm"
+  # conf.mruby_rack_mgem_dir = "vendor/mruby-rack"
+  # conf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
+  # conf.mruby_rack_mgem_revision = "<commit SHA>"
+  conf.cloudflare_worker!
 
   # Add application mrbgems here, for example:
   # conf.gem gemdir: File.join(__dir__, "vendor/my-gem")

@@ -17,9 +17,7 @@ bundle install
 npm install
 
 export PICORUBY_ROOT=/path/to/picoruby
-export PICORUBY_WORKER_WASM_GEM_DIR=/path/to/picoruby-cloudflare-worker-wasm
-# 任意: Rackもローカルのチェックアウトを使う場合
-export MRUBY_RACK_GEM_DIR=/path/to/mruby-rack
+# ビルド前に、下記の例に従ってbuild_config.rbのローカルmrbgemパスを設定
 
 # Emscripten 5.0.7を有効化してから実行
 bundle exec rake doctor
@@ -47,7 +45,12 @@ src/index.js、package.json、wrangler.jsonc、.gitignore、README.mdを生成�
 require "picoruby/cloudflare/build"
 
 MRuby::CrossBuild.new("worker") do |conf|
-  conf.cloudflare_worker
+  # 任意: ローカルチェックアウトはrevision指定より優先されます。
+  # conf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+  # conf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+  # conf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
+  # conf.mruby_rack_mgem_revision = "<commit SHA>"
+  conf.cloudflare_worker!
   # conf.gem gemdir: File.join(__dir__, "vendor/my-gem")
   conf.worker_export(
     app: "app.rb",
@@ -60,15 +63,19 @@ end
 ```
 
 このrequireはPicoRubyのビルドシステム読込後、build_config.rb内で行います。
-`cloudflare_worker` はEmscripten、Wasm longjmp、Worker HAL、PicoRuby、Rackと必要なcore mrbgemを設定します。
+`cloudflare_worker!` はEmscripten、Wasm longjmp、Worker HAL、PicoRuby、Rackと必要なcore mrbgemを設定します。
 Sinatra等のフレームワークはアプリ側で追加します。ABI固有の最終リンク設定（JSPI export等）は実行時ライブラリが所有します。
-`cloudflare_worker(worker: {...}, rack: {...})` で取得先を指定できます。値は通常の `conf.gem` と同じHashです。
+上記の属性は **`cloudflare_worker!` を呼ぶ前** に設定します。`!` はビルド設定を書き換えることを示します。
+両方のディレクトリ属性はデフォルト `nil` で、その場合はrevision属性を使い、`github:` と `checksum_hash:` でgemを宣言します。
+ディレクトリ指定はrevision指定より優先され、相対ディレクトリはbuild_configのディレクトリ基準で解決します。
+revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。
+取得先の選択で `PICORUBY_WORKER_WASM_GEM_DIR` / `MRUBY_RACK_GEM_DIR` は参照せず、`worker:` / `rack:` 引数も受け取りません。
 
 既定のWorker revisionは `e6235bca616dbd4cec619cc0141facdea59a5541`、
 Rackは `05ba46eb0ab490a624a5f2dcb33249670933ff6b` に固定しています。
 revisionがリモート未公開の場合はローカル指定が必要です。gem公開前に、新規チェックアウトから固定revisionを取得できることも確認してください。
 
-相対パスは `project_root` 基準（省略時はbuild_configのディレクトリ）です。
+`worker_export` に渡す相対パスは `project_root` 基準（省略時はbuild_configのディレクトリ）です。
 生成されたRakefileはPicoRubyのRakeを別プロセスで実行し、ビルドをアプリ内の `.picoruby-build/` に分離します。
 アプリはCrossBuildが解決した `mrbcfile` でコンパイルし、既存の `build/host/bin/mrbc` には依存しません。
 
@@ -141,6 +148,9 @@ PICORUBY_WORKER_WASM_GEM_DIR=/path/to/picoruby-cloudflare-worker-wasm \
 MRUBY_RACK_GEM_DIR=/path/to/mruby-rack \
 bundle exec rake test:integration
 ```
+
+このテストコマンドのmrbgem環境変数は、統合テスト用ハーネスへの入力に限定しています。
+ハーネスは生成したbuild_configへディレクトリ属性を明示的に書き込み、ビルド実行前にこれらの環境変数を解除します。
 
 単体テスト: CLI、非上書き、パス検証、DSL、compiler選択、増分export、欠損Wasm復旧、コンパイル失敗時の保護。
 統合テスト: 新規生成・依存インストール・ビルド・Wrangler dry-run・ローカルHTTPとhot reload・実Wasm経由のENV/KV TTL/Queue・

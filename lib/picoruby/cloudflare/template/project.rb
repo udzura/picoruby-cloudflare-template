@@ -46,10 +46,6 @@ module Picoruby::Cloudflare::Template
         "MRUBY_CONFIG" => config, "CONFIG" => config,
         "MRUBY_BUILD_DIR" => File.join(@root, ".picoruby-build"),
       }
-      # Normalize local overrides before changing cwd to PicoRuby.
-      %w[PICORUBY_WORKER_WASM_GEM_DIR MRUBY_RACK_GEM_DIR].each do |key|
-        env[key] = Picoruby::Cloudflare::Template.validate_build_path!(File.expand_path(ENV[key], @root)) if ENV[key]
-      end
       library = File.expand_path("../../..", __dir__)
       command = [RbConfig.ruby, "-I", library, Gem.bin_path("rake", "rake"), "-f", File.join(root, "Rakefile"), "all"]
       raise Error, "PicoRuby build failed" unless system(env, *command, chdir: root)

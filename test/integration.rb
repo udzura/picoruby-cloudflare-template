@@ -16,9 +16,20 @@ root = Dir.mktmpdir("picoruby-template-integration-")
 project = File.join(root, "worker")
 puts "Integration artifacts and logs: #{root}"
 Picoruby::Cloudflare::Template::Generator.new(project, gem_path: gem_root).generate
-environment = %w[PICORUBY_ROOT PICORUBY_WORKER_WASM_GEM_DIR MRUBY_RACK_GEM_DIR].to_h do |key|
-  [key, ENV[key] && File.expand_path(ENV[key])]
+# These environment variables are inputs to the test harness only. The actual
+# build receives local mrbgem paths through explicit build_config attributes.
+overrides = {
+  "picoruby_cloudflare_worker_wasm_mgem_dir" => ENV.fetch("PICORUBY_WORKER_WASM_GEM_DIR"),
+  "mruby_rack_mgem_dir" => ENV["MRUBY_RACK_GEM_DIR"],
+}.filter_map do |attribute, path|
+  "  conf.#{attribute} = #{File.expand_path(path).dump}\n" if path
 end
+build_config = File.join(project, "build_config.rb")
+File.write(build_config, File.read(build_config).sub("  conf.cloudflare_worker!", overrides.join + "  conf.cloudflare_worker!"))
+environment = {
+  "PICORUBY_ROOT" => File.expand_path(ENV.fetch("PICORUBY_ROOT")),
+  "PICORUBY_WORKER_WASM_GEM_DIR" => nil, "MRUBY_RACK_GEM_DIR" => nil,
+}
 environment.merge!("BUNDLE_GEMFILE" => File.join(project, "Gemfile"), "CLOUDFLARE_ENV" => nil, "WRANGLER_SEND_METRICS" => "false")
 step = 0
 run = lambda do |*command, env: {}|

@@ -17,9 +17,7 @@ bundle install
 npm install
 
 export PICORUBY_ROOT=/path/to/picoruby
-export PICORUBY_WORKER_WASM_GEM_DIR=/path/to/picoruby-cloudflare-worker-wasm
-# Optional: use a local Rack checkout as well
-export MRUBY_RACK_GEM_DIR=/path/to/mruby-rack
+# Set local mrbgem paths in build_config.rb as shown below before building
 
 # Activate Emscripten 5.0.7 before running these commands
 bundle exec rake doctor
@@ -47,7 +45,12 @@ An existing destination is never overwritten, even if it is an empty directory. 
 require "picoruby/cloudflare/build"
 
 MRuby::CrossBuild.new("worker") do |conf|
-  conf.cloudflare_worker
+  # Optional: local checkouts take precedence over revisions.
+  # conf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+  # conf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+  # conf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
+  # conf.mruby_rack_mgem_revision = "<commit SHA>"
+  conf.cloudflare_worker!
   # conf.gem gemdir: File.join(__dir__, "vendor/my-gem")
   conf.worker_export(
     app: "app.rb",
@@ -60,15 +63,19 @@ end
 ```
 
 Place this require in build_config.rb, after PicoRuby has loaded its build system.
-`cloudflare_worker` configures Emscripten, Wasm longjmp, the Worker HAL, PicoRuby, Rack, and the required core mrbgems.
+`cloudflare_worker!` configures Emscripten, Wasm longjmp, the Worker HAL, PicoRuby, Rack, and the required core mrbgems.
 Add frameworks such as Sinatra in your application configuration. ABI-specific final link settings, such as JSPI exports, belong to the runtime library.
-Use `cloudflare_worker(worker: {...}, rack: {...})` to override dependency sources. Each value is a Hash in the same format accepted by `conf.gem`.
+Set the attributes above **before** calling `cloudflare_worker!`. The `!` marks its changes to the build configuration.
+Both directory attributes default to `nil`; in that case the gem is declared with `github:` and `checksum_hash:` using its revision attribute.
+A directory takes precedence over its revision, and relative directory paths are resolved against the build_config directory.
+Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.
+Dependency source selection no longer reads `PICORUBY_WORKER_WASM_GEM_DIR` or `MRUBY_RACK_GEM_DIR`, or accepts `worker:` / `rack:` arguments.
 
 The default Worker revision is pinned to `e6235bca616dbd4cec619cc0141facdea59a5541`,
 and Rack to `05ba46eb0ab490a624a5f2dcb33249670933ff6b`.
 Use a local checkout if a revision has not been published to the remote repository. Before publishing this gem, verify that a fresh checkout can fetch the pinned revisions.
 
-Relative paths are resolved against `project_root`, which defaults to the build_config directory.
+Relative paths passed to `worker_export` are resolved against `project_root`, which defaults to the build_config directory.
 The generated Rakefile runs PicoRuby's Rake in a separate process and keeps build output in the application's `.picoruby-build/` directory.
 The application is compiled with the `mrbcfile` resolved by CrossBuild, without relying on an existing `build/host/bin/mrbc`.
 
@@ -141,6 +148,9 @@ PICORUBY_WORKER_WASM_GEM_DIR=/path/to/picoruby-cloudflare-worker-wasm \
 MRUBY_RACK_GEM_DIR=/path/to/mruby-rack \
 bundle exec rake test:integration
 ```
+
+The mrbgem environment variables in this test command are inputs to the integration harness only.
+It writes explicit directory attributes into the generated build_config and clears those variables before invoking the build.
 
 Unit tests cover the CLI, overwrite protection, path validation, DSL, compiler selection, incremental export, missing-Wasm recovery, and preservation of bytecode after compilation failures.
 Integration tests cover project generation, dependency installation, builds, Wrangler dry-run, local HTTP and hot reload, ENV/KV TTL/Queue through actual Wasm,

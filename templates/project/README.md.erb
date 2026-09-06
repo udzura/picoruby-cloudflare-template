@@ -11,9 +11,21 @@ PicoRuby Rack application on Cloudflare Workers.
 The pinned Wrangler version is paired with compatibility date `2026-08-22`.
 Update and test them together; a dry-run alone does not start workerd.
 
-During development of the unpublished runtime, set `PICORUBY_WORKER_WASM_GEM_DIR`
-to the local `picoruby-cloudflare-worker-wasm` checkout. `MRUBY_RACK_GEM_DIR` is
-also available as a local override. See the template gem README for tested revisions.
+During development of the unpublished runtime, set these attributes in the
+CrossBuild block in `build_config.rb`, before calling `conf.cloudflare_worker!`:
+
+```ruby
+conf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+# Optional: use a local Rack checkout too.
+conf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+```
+
+Both directory attributes default to `nil`, which selects GitHub sources at the
+revisions bundled in the template gem. Override those revisions using
+`conf.picoruby_cloudflare_worker_wasm_revision` and `conf.mruby_rack_mgem_revision`.
+Directory attributes take precedence over revision attributes; relative paths
+are resolved against `build_config.rb`. These sources are not selected through
+environment variables. See the template gem README for tested revisions.
 
 `build_config.rb` selects mrbgems and exports an ES module to `generated/worker/`.
 Do not edit generated files. The generated Wasm, JS and app bytecode are one unit;
