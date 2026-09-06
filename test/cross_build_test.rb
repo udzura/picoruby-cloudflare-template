@@ -56,6 +56,42 @@ class CrossBuildTest < Test::Unit::TestCase
     RUBY
   end
 
+  test "configuration block receives self once before validation and build setup" do
+    check_config <<~'RUBY'
+      conf = MRuby::CrossBuild.new
+      conf.picoruby_cloudflare_worker_wasm_mgem_dir = "invalid;before-block"
+      calls = 0
+      conf.cloudflare_worker! do |cf|
+        calls += 1
+        raise unless cf.equal?(conf)
+        raise unless cf.gems.empty? && cf.cc.command.nil?
+        cf.picoruby_cloudflare_worker_wasm_mgem_dir = "vendor/worker"
+        cf.mruby_rack_mgem_revision = "rack-revision"
+        :ignored_return_value
+      end
+      raise unless calls == 1
+      raise unless conf.cc.command == "emcc"
+      raise unless conf.gems.last.first == {gemdir: "/project/vendor/worker"}
+      raise unless conf.gems[-2].first == {github: "udzura/mruby-rack", checksum_hash: "rack-revision"}
+    RUBY
+  end
+
+  test "a block exception propagates without starting build setup" do
+    check_config <<~'RUBY'
+      conf = MRuby::CrossBuild.new
+      error = RuntimeError.new("configuration failed")
+      begin
+        conf.cloudflare_worker! { raise error }
+        raise "exception swallowed"
+      rescue RuntimeError => caught
+        raise unless caught.equal?(error)
+      end
+      raise unless conf.gems.empty? && conf.cc.command.nil?
+      conf.cloudflare_worker!
+      raise unless conf.cc.command == "emcc"
+    RUBY
+  end
+
   test "nil directories declare GitHub gems at built-in revisions and ignore legacy environment overrides" do
     source = <<~'RUBY'
       conf = MRuby::CrossBuild.new

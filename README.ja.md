@@ -45,12 +45,13 @@ src/index.js、package.json、wrangler.jsonc、.gitignore、README.mdを生成�
 require "picoruby/cloudflare/build"
 
 MRuby::CrossBuild.new("worker") do |conf|
-  # 任意: ローカルチェックアウトはrevision指定より優先されます。
-  # conf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
-  # conf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
-  # conf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
-  # conf.mruby_rack_mgem_revision = "<commit SHA>"
-  conf.cloudflare_worker!
+  conf.cloudflare_worker! do |cf|
+    # 任意: ローカルチェックアウトはrevision指定より優先されます。
+    # cf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+    # cf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+    # cf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
+    # cf.mruby_rack_mgem_revision = "<commit SHA>"
+  end
   # conf.gem gemdir: File.join(__dir__, "vendor/my-gem")
   conf.worker_export(
     app: "app.rb",
@@ -65,7 +66,8 @@ end
 このrequireはPicoRubyのビルドシステム読込後、build_config.rb内で行います。
 `cloudflare_worker!` はEmscripten、Wasm longjmp、Worker HAL、PicoRuby、Rackと必要なcore mrbgemを設定します。
 Sinatra等のフレームワークはアプリ側で追加します。ABI固有の最終リンク設定（JSPI export等）は実行時ライブラリが所有します。
-上記の属性は **`cloudflare_worker!` を呼ぶ前** に設定します。`!` はビルド設定を書き換えることを示します。
+属性は `cloudflare_worker!` のブロック内で設定します。ブロックにはCrossBuild自身が渡され、検証やビルド設定の本処理より先に実行されます。
+ブロックなしでも呼べます。その場合は事前に属性を設定してください。`!` はビルド設定を書き換えることを示します。
 両方のディレクトリ属性はデフォルト `nil` で、その場合はrevision属性を使い、`github:` と `checksum_hash:` でgemを宣言します。
 ディレクトリ指定はrevision指定より優先され、相対ディレクトリはbuild_configのディレクトリ基準で解決します。
 revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。

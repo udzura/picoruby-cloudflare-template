@@ -22,10 +22,11 @@ overrides = {
   "picoruby_cloudflare_worker_wasm_mgem_dir" => ENV.fetch("PICORUBY_WORKER_WASM_GEM_DIR"),
   "mruby_rack_mgem_dir" => ENV["MRUBY_RACK_GEM_DIR"],
 }.filter_map do |attribute, path|
-  "  conf.#{attribute} = #{File.expand_path(path).dump}\n" if path
+  "    cf.#{attribute} = #{File.expand_path(path).dump}\n" if path
 end
 build_config = File.join(project, "build_config.rb")
-File.write(build_config, File.read(build_config).sub("  conf.cloudflare_worker!", overrides.join + "  conf.cloudflare_worker!"))
+block_start = "  conf.cloudflare_worker! do |cf|\n"
+File.write(build_config, File.read(build_config).sub(block_start, block_start + overrides.join))
 environment = {
   "PICORUBY_ROOT" => File.expand_path(ENV.fetch("PICORUBY_ROOT")),
   "PICORUBY_WORKER_WASM_GEM_DIR" => nil, "MRUBY_RACK_GEM_DIR" => nil,

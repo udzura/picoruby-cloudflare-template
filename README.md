@@ -45,12 +45,13 @@ An existing destination is never overwritten, even if it is an empty directory. 
 require "picoruby/cloudflare/build"
 
 MRuby::CrossBuild.new("worker") do |conf|
-  # Optional: local checkouts take precedence over revisions.
-  # conf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
-  # conf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
-  # conf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
-  # conf.mruby_rack_mgem_revision = "<commit SHA>"
-  conf.cloudflare_worker!
+  conf.cloudflare_worker! do |cf|
+    # Optional: local checkouts take precedence over revisions.
+    # cf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+    # cf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+    # cf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
+    # cf.mruby_rack_mgem_revision = "<commit SHA>"
+  end
   # conf.gem gemdir: File.join(__dir__, "vendor/my-gem")
   conf.worker_export(
     app: "app.rb",
@@ -65,7 +66,8 @@ end
 Place this require in build_config.rb, after PicoRuby has loaded its build system.
 `cloudflare_worker!` configures Emscripten, Wasm longjmp, the Worker HAL, PicoRuby, Rack, and the required core mrbgems.
 Add frameworks such as Sinatra in your application configuration. ABI-specific final link settings, such as JSPI exports, belong to the runtime library.
-Set the attributes above **before** calling `cloudflare_worker!`. The `!` marks its changes to the build configuration.
+Set the attributes in the `cloudflare_worker!` block. It receives the CrossBuild object itself and runs before validation and build setup.
+Calling without a block is also supported; in that case, set any overrides beforehand. The `!` marks its changes to the build configuration.
 Both directory attributes default to `nil`; in that case the gem is declared with `github:` and `checksum_hash:` using its revision attribute.
 A directory takes precedence over its revision, and relative directory paths are resolved against the build_config directory.
 Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.

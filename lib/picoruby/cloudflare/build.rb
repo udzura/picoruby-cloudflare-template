@@ -27,6 +27,7 @@ module Picoruby::Cloudflare::Template
     end
 
     def cloudflare_worker!
+      yield self if block_given?
       raise Error, "cloudflare_worker! may only be configured once per target" if @cloudflare_configured
       Picoruby::Cloudflare::Template.validate_build_path!(MRUBY_ROOT)
       Picoruby::Cloudflare::Template.validate_build_path!(build_dir)

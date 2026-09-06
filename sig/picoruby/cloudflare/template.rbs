@@ -14,7 +14,7 @@ module Picoruby
         attr_writer mruby_rack_mgem_revision: String?
         def picoruby_cloudflare_worker_wasm_revision: () -> String
         def mruby_rack_mgem_revision: () -> String
-        def cloudflare_worker!: () -> untyped
+        def cloudflare_worker!: () ?{ (self) -> untyped } -> untyped
         def worker_export: (app: String, output_dir: String, wrangler_config: String,
                             ?environment: String?, ?project_root: String?) -> untyped
       end
