@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "<%= @name %>",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-22",
+  "build": {
+    "command": "bundle exec rake build",
+    "watch_dir": ["app.rb", "build_config.rb"]
+  },
+  "rules": [
+    { "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }
+  ],
+  "vars": {
+    "GREETING": "Hello from PicoRuby on Cloudflare!"
+  }
+  // Add kv_namespaces / queues.producers here, then rebuild.
+  // Keep secrets out of this file; use .dev.vars and wrangler secret put.
+}

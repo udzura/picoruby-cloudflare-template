@@ -2,7 +2,27 @@ module Picoruby
   module Cloudflare
     module Template
       VERSION: String
-      # See the writing guide of rbs: https://github.com/ruby/rbs#guides
+      class Error < StandardError
+      end
+
+      def self.validate_build_path!: (String path) -> String
+
+      class Generator
+        def initialize: (String destination, ?name: String?, ?gem_path: String?) -> void
+        def generate: () -> String
+      end
+
+      class CLI
+        def self.run: (Array[String] argv, ?out: untyped, ?err: untyped) -> Integer
+      end
+
+      class Project
+        def initialize: (root: String) -> void
+        def picoruby_root: () -> String
+        def doctor: (?out: untyped) -> bool
+        def build: () -> void
+        def define_tasks: () -> untyped
+      end
     end
   end
 end
