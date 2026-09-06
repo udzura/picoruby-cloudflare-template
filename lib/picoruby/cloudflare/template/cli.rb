@@ -6,9 +6,27 @@ require_relative "project"
 
 module Picoruby::Cloudflare::Template
   class CLI
+    HELP = <<~TEXT.freeze
+      Usage: picoruby-cloudflare COMMAND [OPTIONS]
+
+      Commands:
+        new PATH          Generate a PicoRuby Cloudflare Worker project
+        doctor [PROJECT]  Check local Worker build prerequisites (default: current directory)
+
+      Options:
+        -h, --help        Show this help
+
+      Run `picoruby-cloudflare new --help` for project generation options.
+    TEXT
+
     def self.run(argv, out: $stdout, err: $stderr)
       argv = argv.dup
       command = argv.shift
+      if command.nil? || command == "-h" || command == "--help"
+        out.puts HELP
+        return 0
+      end
+
       options = {}
       parser = OptionParser.new do |opts|
         opts.banner = "Usage: picoruby-cloudflare new PATH [--name NAME] [--gem-path PATH]\n       picoruby-cloudflare doctor [PROJECT]"
@@ -24,8 +42,6 @@ module Picoruby::Cloudflare::Template
       when "doctor"
         raise Error, parser.to_s unless argv.length <= 1 && options.empty?
         Project.new(root: argv.first || Dir.pwd).doctor(out: out)
-      when "--help", "-h", nil
-        out.puts parser
       else
         raise Error, parser.to_s
       end

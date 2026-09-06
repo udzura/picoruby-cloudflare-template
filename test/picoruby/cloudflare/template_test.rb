@@ -77,6 +77,35 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_include File.read(File.join(destination, "Gemfile")), gem_path.dump
   end
 
+  test "top-level help lists subcommands and succeeds without running them" do
+    [[], ["-h"], ["--help"]].each do |argv|
+      out = StringIO.new
+      err = StringIO.new
+      original = argv.dup
+      status = Picoruby::Cloudflare::Template::CLI.run(argv, out: out, err: err)
+      assert_equal 0, status
+      assert_include out.string, "Usage: picoruby-cloudflare COMMAND [OPTIONS]"
+      assert_include out.string, "Commands:"
+      assert_include out.string, "new PATH"
+      assert_include out.string, "doctor [PROJECT]"
+      assert_include out.string, "-h, --help"
+      assert_equal "", err.string
+      assert_equal original, argv
+    end
+    assert_equal [], Dir.children(@tmp)
+  end
+
+  test "a leading help flag is handled before subcommand option parsing" do
+    %w[-h --help].each do |flag|
+      out = StringIO.new
+      err = StringIO.new
+      status = Picoruby::Cloudflare::Template::CLI.run([flag, "--unknown"], out: out, err: err)
+      assert_equal 0, status
+      assert_include out.string, "Commands:"
+      assert_equal "", err.string
+    end
+  end
+
   test "CLI errors are actionable and do not create a destination" do
     err = StringIO.new
     status = Picoruby::Cloudflare::Template::CLI.run(["new", File.join(@tmp, "app"), "--unknown"], err: err)
