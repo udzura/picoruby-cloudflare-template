@@ -11,8 +11,8 @@ require "picoruby/cloudflare/template/exporter"
 class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
   test "VERSION" do
     version = ::Picoruby::Cloudflare::Template::VERSION
-    assert_equal "0.1.0-rc1", version
-    assert_equal "0.1.0.pre.rc1", Gem::Version.new(version).to_s
+    assert_equal "0.1.0.rc1", version
+    assert_equal "0.1.0.rc1", Gem::Version.new(version).to_s
     assert Gem::Version.new(version).prerelease?
   end
 
@@ -31,7 +31,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
       assert_path_exist(File.join(destination, name))
     end
     assert_equal "my-worker", JSON.parse(File.read(File.join(destination, "package.json")))["name"]
-    assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0-rc1"'
+    assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0.rc1"'
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
     assert_include File.read(File.join(destination, "README.md")), "brew install emscripten"
     config = File.read(File.join(destination, "build_config.rb"))

@@ -42,10 +42,10 @@ The build also checks that the Emscripten version is supported. Use a Node.js ve
 Build paths containing spaces or shell metacharacters are rejected because of upstream shell command expansion limitations.
 
 To try a packaged gem, run `gem build picoruby-cloudflare-template.gemspec`, followed by
-`gem install ./picoruby-cloudflare-template-0.1.0.pre.rc1.gem` and
+`gem install ./picoruby-cloudflare-template-0.1.0.rc1.gem` and
 `picoruby-cloudflare new my-worker`. Use `bundle install --local` in the generated project to resolve the unpublished version.
-After this release candidate is published, install it with `gem install picoruby-cloudflare-template --pre --version 0.1.0-rc1`.
-`VERSION` is `0.1.0-rc1`; RubyGems normalizes it to `0.1.0.pre.rc1` in gem metadata and filenames.
+After this release candidate is published, install it with `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc1`.
+`VERSION` and the RubyGems metadata version are both `0.1.0.rc1`.
 
 ## Generated files and build configuration
 
