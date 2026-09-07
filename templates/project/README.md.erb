@@ -1,0 +1,59 @@
+# <%= @name %>
+
+PicoRuby Rack application on Cloudflare Workers.
+
+1. Install Ruby >= 3.2 and Node.js (supported by Wrangler). On macOS, install Emscripten via Homebrew as shown below.
+2. Set `PICORUBY_ROOT` to a PicoRuby checkout with its submodules initialized.
+3. Run `bundle install` and `npm install`.
+4. Run `bundle exec rake doctor`, then `bundle exec rake`.
+5. Run `npm run dev`. Wrangler's custom build also runs Rake on startup and Ruby changes.
+
+```sh
+brew install emscripten
+export PATH="$(brew --prefix emscripten)/bin:$PATH"
+emcc --version
+```
+
+Emscripten 5.0.0 or later is accepted; 5.0.7 and Homebrew 6.0.9 are tested.
+Newer versions are accepted but not necessarily tested. If switching from emsdk,
+use a shell without `emsdk_env.sh` and unset `EMSDK`, `EM_CONFIG`, and `EM_CACHE`.
+
+The pinned Wrangler version is paired with compatibility date `2026-08-22`.
+Update and test them together; a dry-run alone does not start workerd.
+
+During development of the unpublished runtime, set these attributes in the
+`cloudflare_worker!` block in `build_config.rb`:
+
+```ruby
+conf.cloudflare_worker! do |cf|
+  cf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+  # Optional: use a local Rack checkout too.
+  cf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+end
+```
+
+The block receives the CrossBuild object itself and runs before build setup.
+Calling without a block is also supported. Both directory attributes default to `nil`, which selects GitHub sources at the
+revisions bundled in the template gem. Override those revisions in the same block using
+`cf.picoruby_cloudflare_worker_wasm_revision` and `cf.mruby_rack_mgem_revision`.
+Directory attributes take precedence over revision attributes; relative paths
+are resolved against `build_config.rb`. These sources are not selected through
+environment variables. See the template gem README for tested revisions.
+
+`build_config.rb` selects mrbgems and exports an ES module to `generated/worker/`.
+Do not edit generated files. The generated Wasm, JS and app bytecode are one unit;
+use Wrangler to bundle them, not a plain Node.js import of `src/index.js`.
+
+Configure bindings in `wrangler.jsonc`; the build regenerates `bindings.js`.
+Ruby can use `env["cloudflare.env"].CACHE_KV` or
+`Cloudflare::KV.from_env(env, "CACHE_KV")`, and similarly `Cloudflare::Queue.from_env`.
+String/JSON vars and secrets are accessible through Ruby `ENV`.
+
+Keep secrets in `.dev.vars` locally and use `npx wrangler secret put NAME` remotely.
+Never put them in `app.rb`, `build_config.rb` or committed config files.
+
+For named environments, set `CLOUDFLARE_ENV=staging npm run dev` (or `npm run deploy`)
+so Wrangler and the binding registry select the same environment. Do not select an
+environment using only `--env`; custom build processes need `CLOUDFLARE_ENV` too.
+
+Commit `Gemfile.lock` and `package-lock.json`. Deploy explicitly with `npm run deploy`.

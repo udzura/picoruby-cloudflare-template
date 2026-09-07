@@ -1,35 +1,183 @@
-# Picoruby::Cloudflare::Template
+# picoruby-cloudflare-template
 
-TODO: Delete this and the text below, and describe your gem
+English | [日本語](README.ja.md)
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/picoruby/cloudflare/template`. To experiment with that code, run `bin/console` for an interactive prompt.
+A CRuby gem for generating PicoRuby Cloudflare Worker projects, configuring CrossBuild, and exporting local ES modules.
+It is not needed at Wasm runtime, and publishing an npm package is not required.
 
-## Installation
+## Quick start (before publication)
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+On macOS, install Emscripten via [Homebrew](https://formulae.brew.sh/formula/emscripten) first:
 
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```sh
+brew install emscripten
+export PATH="$(brew --prefix emscripten)/bin:$PATH"
+emcc --version
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+Emscripten 5.0.0 or later is accepted. Versions 5.0.7 and Homebrew 6.0.9 are tested;
+accepting newer versions does not imply they have all been tested.
+If switching from emsdk, use a shell without `emsdk_env.sh` and unset `EMSDK`, `EM_CONFIG`, and `EM_CACHE` to avoid mixing toolchains.
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Then run the following from this repository:
+
+```sh
+bundle install
+bundle exec ruby exe/picoruby-cloudflare new ../my-worker --gem-path "$PWD"
+cd ../my-worker
+bundle install
+npm install
+
+export PICORUBY_ROOT=/path/to/picoruby
+# Set local mrbgem paths in build_config.rb as shown below before building
+
+bundle exec rake doctor
+bundle exec rake
+npm run dev
 ```
 
-## Usage
+Use a PicoRuby checkout with its submodules initialized. This gem does not initialize submodules or install Emscripten.
+`doctor` checks key PicoRuby files, emcc, emar, Node.js, and jsonc-parser.
+The build also checks that the Emscripten version is supported. Use a Node.js version supported by Wrangler.
+Build paths containing spaces or shell metacharacters are rejected because of upstream shell command expansion limitations.
 
-TODO: Write usage instructions here
+To try a packaged gem, run `gem build picoruby-cloudflare-template.gemspec`, followed by
+`gem install ./picoruby-cloudflare-template-0.1.0.pre.rc1.gem` and
+`picoruby-cloudflare new my-worker`. Use `bundle install --local` in the generated project to resolve the unpublished version.
+After this release candidate is published, install it with `gem install picoruby-cloudflare-template --pre --version 0.1.0-rc1`.
+`VERSION` is `0.1.0-rc1`; RubyGems normalizes it to `0.1.0.pre.rc1` in gem metadata and filenames.
 
-## Development
+## Generated files and build configuration
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+`new PATH [--name NAME] [--gem-path PATH]` generates a Gemfile, Rakefile, build_config.rb, a minimal Rack app in app.rb,
+src/index.js, package.json, wrangler.jsonc, .gitignore, and README.md.
+An existing destination is never overwritten, even if it is an empty directory. Commit Gemfile.lock and package-lock.json in your application repository.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+```ruby
+require "picoruby/cloudflare/build"
 
-## Contributing
+MRuby::CrossBuild.new("worker") do |conf|
+  conf.cloudflare_worker! do |cf|
+    # Optional: local checkouts take precedence over revisions.
+    # cf.picoruby_cloudflare_worker_wasm_mgem_dir = "/path/to/picoruby-cloudflare-worker-wasm"
+    # cf.mruby_rack_mgem_dir = "/path/to/mruby-rack"
+    # cf.picoruby_cloudflare_worker_wasm_revision = "<commit SHA>"
+    # cf.mruby_rack_mgem_revision = "<commit SHA>"
+  end
+  # conf.gem gemdir: File.join(__dir__, "vendor/my-gem")
+  conf.worker_export(
+    app: "app.rb",
+    output_dir: "generated/worker",
+    wrangler_config: "wrangler.jsonc",
+    environment: ENV["CLOUDFLARE_ENV"],
+    project_root: __dir__,
+  )
+end
+```
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/picoruby-cloudflare-template.
+Place this require in build_config.rb, after PicoRuby has loaded its build system.
+`cloudflare_worker!` configures Emscripten, Wasm longjmp, the Worker HAL, PicoRuby, Rack, and the required core mrbgems.
+Add frameworks such as Sinatra in your application configuration. ABI-specific final link settings, such as JSPI exports, belong to the runtime library.
+Set the attributes in the `cloudflare_worker!` block. It receives the CrossBuild object itself and runs before validation and build setup.
+Calling without a block is also supported; in that case, set any overrides beforehand. The `!` marks its changes to the build configuration.
+Both directory attributes default to `nil`; in that case the gem is declared with `github:` and `checksum_hash:` using its revision attribute.
+A directory takes precedence over its revision, and relative directory paths are resolved against the build_config directory.
+Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.
+Dependency source selection no longer reads `PICORUBY_WORKER_WASM_GEM_DIR` or `MRUBY_RACK_GEM_DIR`, or accepts `worker:` / `rack:` arguments.
+
+The default Worker revision is pinned to `e6235bca616dbd4cec619cc0141facdea59a5541`,
+and Rack to `05ba46eb0ab490a624a5f2dcb33249670933ff6b`.
+Use a local checkout if a revision has not been published to the remote repository. Before publishing this gem, verify that a fresh checkout can fetch the pinned revisions.
+
+Relative paths passed to `worker_export` are resolved against `project_root`, which defaults to the build_config directory.
+The generated Rakefile runs PicoRuby's Rake in a separate process and keeps build output in the application's `.picoruby-build/` directory.
+The application is compiled with the `mrbcfile` resolved by CrossBuild, without relying on an existing `build/host/bin/mrbc`.
+
+## ES module output and responsibilities
+
+```text
+generated/worker/
+  app.bin
+  bindings.js
+  package.json            # private: true, type: module
+  manifest.json           # Generator version, Worker revision, artifact SHA256 hashes
+  runtime/
+    index.js              # createWorker({ app, bindingTypes })
+    runtime.js
+    host-bridge.js
+    picoruby-worker.js
+    picoruby-worker.wasm
+  tools/                  # Binding registry generation scripts
+```
+
+The runtime library owns the Ruby/C code, HAL, and shared JS bridge. This gem owns the templates, CrossBuild DSL, export logic, and thin createWorker entry point.
+Shared JS and registry generation scripts are copied from **the same mrbgem checkout** used to build Wasm.
+Their current locations are `spike/src/` and `spike/scripts/`. This gem does not maintain a separate copy of those implementations.
+If that layout changes, update the exporter and pinned revision together.
+
+`createWorker` creates and closes a VM for each request, without sharing env between requests.
+The low-level `createRuntime` / `dispatch` / `closeRuntime` functions are also re-exported.
+If you explicitly reuse a VM, the runtime library serializes dispatches to that VM.
+The output is intended to be bundled with Wrangler; it does not make `.wasm` / `.bin` imports directly usable in Node.js.
+Check the license requirements of the original mrbgems and any additional dependencies before redistributing artifacts.
+
+Rake dependencies determine when to recompile the application, and export leaves files unchanged when their content is identical.
+The registry is validated and generated on every build to reflect environment changes. A missing Wasm file in the original build output also triggers relinking.
+However, the tested PicoRuby version rewrites src/version.c on every build, so that file is recompiled and the runtime is relinked even when nothing else has changed.
+
+## Bindings, environments, and Wrangler
+
+The type registry is generated from `kv_namespaces` / `queues.producers` in wrangler.jsonc.
+JSONC comments and trailing commas are supported. Invalid configuration, duplicate binding names, and nonexistent environments cause build errors.
+Variable values and secrets are not embedded in build artifacts.
+
+```ruby
+kv = Cloudflare::KV.from_env(env, "CACHE_KV")
+kv.put("key", "value", ttl: 60)
+value = env["cloudflare.env"].CACHE_KV.get("key")
+Cloudflare::Queue.from_env(env, "EVENTS").send("created")
+token = ENV["API_TOKEN"]
+```
+
+Queue sending currently supports UTF-8 strings only, matching the runtime API. Manage secrets through .dev.vars or `wrangler secret put`, and keep them out of Git.
+With `npm run dev` / `npm run deploy`, Wrangler's custom build runs Rake.
+`build.watch_dir` covers app.rb and build_config.rb. Update the watch list when adding Ruby files.
+
+```sh
+CLOUDFLARE_ENV=staging npm run dev
+CLOUDFLARE_ENV=staging npm run deploy
+```
+
+Selecting a named environment with only `--env staging` does not pass the environment name to the custom build.
+Make sure Wrangler and the exporter use the same `CLOUDFLARE_ENV` value.
+Define resource bindings for each environment; they are not inherited from the top-level configuration.
+
+## Tests and reproduction
+
+```sh
+bundle exec rake test
+
+PICORUBY_ROOT=/path/to/picoruby \
+PICORUBY_WORKER_WASM_GEM_DIR=/path/to/picoruby-cloudflare-worker-wasm \
+MRUBY_RACK_GEM_DIR=/path/to/mruby-rack \
+bundle exec rake test:integration
+```
+
+The mrbgem environment variables in this test command are inputs to the integration harness only.
+It writes explicit directory attributes into the generated build_config and clears those variables before invoking the build.
+
+Unit tests cover the CLI, overwrite protection, path validation, DSL, compiler selection, incremental export, missing-Wasm recovery, and preservation of bytecode after compilation failures.
+Integration tests cover project generation, dependency installation, builds, Wrangler dry-run, local HTTP and hot reload, ENV/KV TTL/Queue through actual Wasm,
+env isolation between concurrent requests, environment switching, and missing-Wasm recovery.
+Integration tests require a Node.js version with JSPI support. They do not deploy Workers or create Cloudflare resources.
+All artifacts and step-by-step logs are retained in the temporary directory printed by the test for troubleshooting.
+
+Tested with PicoRuby `33540f66d9aba633d4d3ebd6707d5c12baebb652`, the Worker/Rack revisions above,
+Ruby 4.0.5, Emscripten 5.0.7 and Homebrew Emscripten 6.0.9, Node.js 26.8.1, and Wrangler 4.125.0.
+The compatibility date is `2026-08-22`, tested with the pinned Wrangler version.
+A dry-run does not start workerd, so verify local HTTP responses when updating Wrangler or the compatibility date.
+Rerun the integration tests when PicoRuby or the mruby submodule's build API changes.
+
+## License
+
+This gem is available under the [MIT License](LICENSE).
