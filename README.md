@@ -7,7 +7,19 @@ It is not needed at Wasm runtime, and publishing an npm package is not required.
 
 ## Quick start (before publication)
 
-Run the following from this repository:
+On macOS, install Emscripten via [Homebrew](https://formulae.brew.sh/formula/emscripten) first:
+
+```sh
+brew install emscripten
+export PATH="$(brew --prefix emscripten)/bin:$PATH"
+emcc --version
+```
+
+Emscripten 5.0.0 or later is accepted. Versions 5.0.7 and Homebrew 6.0.9 are tested;
+accepting newer versions does not imply they have all been tested.
+If switching from emsdk, use a shell without `emsdk_env.sh` and unset `EMSDK`, `EM_CONFIG`, and `EM_CACHE` to avoid mixing toolchains.
+
+Then run the following from this repository:
 
 ```sh
 bundle install
@@ -19,15 +31,14 @@ npm install
 export PICORUBY_ROOT=/path/to/picoruby
 # Set local mrbgem paths in build_config.rb as shown below before building
 
-# Activate Emscripten 5.0.7 before running these commands
 bundle exec rake doctor
 bundle exec rake
 npm run dev
 ```
 
-Use a PicoRuby checkout with its submodules initialized. This gem does not initialize submodules or install the SDK.
+Use a PicoRuby checkout with its submodules initialized. This gem does not initialize submodules or install Emscripten.
 `doctor` checks key PicoRuby files, emcc, emar, Node.js, and jsonc-parser.
-The build also checks the Emscripten version required by the mrbgem. Use a Node.js version supported by Wrangler.
+The build also checks that the Emscripten version is supported. Use a Node.js version supported by Wrangler.
 Build paths containing spaces or shell metacharacters are rejected because of upstream shell command expansion limitations.
 
 To try a packaged gem, run `gem build picoruby-cloudflare-template.gemspec`, followed by
@@ -162,7 +173,7 @@ Integration tests require a Node.js version with JSPI support. They do not deplo
 All artifacts and step-by-step logs are retained in the temporary directory printed by the test for troubleshooting.
 
 Tested with PicoRuby `33540f66d9aba633d4d3ebd6707d5c12baebb652`, the Worker/Rack revisions above,
-Ruby 4.0.5, Emscripten 5.0.7, Node.js 26.8.1, and Wrangler 4.125.0.
+Ruby 4.0.5, Emscripten 5.0.7 and Homebrew Emscripten 6.0.9, Node.js 26.8.1, and Wrangler 4.125.0.
 The compatibility date is `2026-08-22`, tested with the pinned Wrangler version.
 A dry-run does not start workerd, so verify local HTTP responses when updating Wrangler or the compatibility date.
 Rerun the integration tests when PicoRuby or the mruby submodule's build API changes.

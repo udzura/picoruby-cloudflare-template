@@ -49,6 +49,44 @@ class ExporterTest < Test::Unit::TestCase
     Rake::Task[@build.products.first].invoke
   end
 
+  def verify_compiler(version, exit_status: 0)
+    if version
+      compiler = File.join(@tmp, "emcc")
+      File.write(compiler, "#!/bin/sh\nprintf '%s\\n' 'emcc (Emscripten gcc/clang-like replacement) #{version}'\nexit #{exit_status}\n")
+      File.chmod(0o755, compiler)
+    end
+    previous_path = ENV["PATH"]
+    begin
+      ENV["PATH"] = @tmp
+      Picoruby::Cloudflare::Template::Exporter.instance_method(:verify_emscripten!).bind_call(@exporter)
+    ensure
+      ENV["PATH"] = previous_path
+    end
+  end
+
+  test "compiler check accepts Emscripten 5 and later" do
+    %w[5.0.0 5.0.7 6.0.8 6.0.9 6.0.9-git 7.0.0 10.0.0].each do |version|
+      assert_nothing_raised { verify_compiler(version) }
+    end
+  end
+
+  test "compiler check rejects older or unrecognized versions" do
+    %w[4.99.99 unknown].each do |version|
+      error = assert_raise(Picoruby::Cloudflare::Template::Error) { verify_compiler(version) }
+      assert_include error.message, "Expected Emscripten >= 5.0.0"
+    end
+  end
+
+  test "compiler check rejects failed commands even with a supported version" do
+    assert_raise(Picoruby::Cloudflare::Template::Error) { verify_compiler("6.0.9", exit_status: 1) }
+  end
+
+  test "compiler check reports missing emcc" do
+    error = assert_raise(Picoruby::Cloudflare::Template::Error) { verify_compiler(nil) }
+    assert_include error.message, "emcc is not on PATH; on macOS, run brew install emscripten"
+    assert_include error.message, "expected >= 5.0.0"
+  end
+
   test "export uses target compiler, preserves unchanged artifacts and repairs missing Wasm" do
     build
     bytecode = File.join(@tmp, "generated/worker/app.bin")

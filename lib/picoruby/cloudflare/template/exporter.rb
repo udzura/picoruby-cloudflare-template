@@ -97,18 +97,17 @@ module Picoruby::Cloudflare::Template
     end
 
     def check_assets!
-      %w[spike/src/runtime.js spike/src/host-bridge.js spike/scripts/cloudflare-binding-registry.mjs spike/scripts/generate-bindings.mjs spike/.emscripten-version].each do |path|
+      %w[spike/src/runtime.js spike/src/host-bridge.js spike/scripts/cloudflare-binding-registry.mjs spike/scripts/generate-bindings.mjs].each do |path|
         raise Error, "Worker mrbgem is missing export asset #{path}; use the documented runtime revision" unless File.file?(File.join(@gem_dir, path))
       end
     end
 
     def verify_emscripten!
-      expected = File.read(File.join(@gem_dir, "spike/.emscripten-version")).strip
       output, status = Open3.capture2e("emcc", "--version")
       actual = output[/emcc.*? (\d+\.\d+\.\d+)/, 1]
-      raise Error, "Expected Emscripten #{expected}, got #{actual || output.lines.first}; activate the matching SDK" unless status.success? && actual == expected
+      raise Error, "Expected Emscripten >= 5.0.0, got #{actual || output.lines.first}; see README for brew install emscripten and PATH setup" unless status.success? && actual && actual.split('.').first.to_i >= 5
     rescue Errno::ENOENT
-      raise Error, "emcc is not on PATH; activate Emscripten #{expected}"
+      raise Error, "emcc is not on PATH; on macOS, run brew install emscripten and add its bin directory to PATH (expected >= 5.0.0; see README)"
     end
 
     def worker_revision

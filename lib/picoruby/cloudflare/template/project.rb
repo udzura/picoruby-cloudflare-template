@@ -25,11 +25,12 @@ module Picoruby::Cloudflare::Template
         raise Error, "Missing #{file} in #{root}; initialize PicoRuby submodules" unless File.file?(File.join(root, file))
       end
       %w[emcc emar node].each do |command|
+        hint = command == "node" ? "install Node.js supported by Wrangler" : "on macOS, run brew install emscripten and add its bin directory to PATH (see README)"
         output, status = Open3.capture2e(command, "--version")
-        raise Error, "#{command} is unavailable: #{output}" unless status.success?
+        raise Error, "#{command} is unavailable: #{output}; #{hint}" unless status.success?
         out.puts output.lines.first
       rescue Errno::ENOENT
-        raise Error, "#{command} is not on PATH; activate Emscripten / install Node.js"
+        raise Error, "#{command} is not on PATH; #{hint}"
       end
       _, status = Open3.capture2e("node", "-e", "require('jsonc-parser')", chdir: @root)
       raise Error, "jsonc-parser is missing; run npm install in #{@root}" unless status.success?

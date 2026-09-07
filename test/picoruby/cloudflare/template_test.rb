@@ -33,6 +33,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_equal "my-worker", JSON.parse(File.read(File.join(destination, "package.json")))["name"]
     assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0-rc1"'
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
+    assert_include File.read(File.join(destination, "README.md")), "brew install emscripten"
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"
     assert_include config, "cf.picoruby_cloudflare_worker_wasm_mgem_dir"
@@ -129,6 +130,39 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert !defined?(MRuby::CrossBuild)
   ensure
     Rake.application = old
+  end
+
+  test "new command recommends Homebrew" do
+    out = StringIO.new
+    status = Picoruby::Cloudflare::Template::CLI.run(["new", File.join(@tmp, "app")], out: out)
+    assert_equal 0, status
+    assert_include out.string, "brew install emscripten"
+  end
+
+  test "doctor gives dependency-specific installation guidance" do
+    %w[Rakefile lib/picoruby/build.rb mrbgems/picoruby-mruby/lib/mruby/lib/mruby/build.rb mrbgems/mruby-compiler/lib/prism/include/prism.h].each do |file|
+      path = File.join(@tmp, file)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, "")
+    end
+    previous_path = ENV["PATH"]
+    previous_root = ENV["PICORUBY_ROOT"]
+    begin
+      ENV["PATH"] = ENV["PICORUBY_ROOT"] = @tmp
+      %w[emcc emar node].each do |command|
+        error = assert_raise(Picoruby::Cloudflare::Template::Error) do
+          Picoruby::Cloudflare::Template::Project.new(root: @tmp).doctor(out: StringIO.new)
+        end
+        assert_include error.message, "#{command} is not on PATH"
+        assert_include error.message, command == "node" ? "install Node.js" : "brew install emscripten"
+        path = File.join(@tmp, command)
+        File.write(path, "#!/bin/sh\necho available\n")
+        File.chmod(0o755, path)
+      end
+    ensure
+      ENV["PATH"] = previous_path
+      ENV["PICORUBY_ROOT"] = previous_root
+    end
   end
 
   test "build extension reports a misplaced require" do

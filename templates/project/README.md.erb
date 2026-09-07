@@ -2,11 +2,21 @@
 
 PicoRuby Rack application on Cloudflare Workers.
 
-1. Install Ruby >= 3.2, Node.js (supported by Wrangler), and Emscripten 5.0.7.
+1. Install Ruby >= 3.2 and Node.js (supported by Wrangler). On macOS, install Emscripten via Homebrew as shown below.
 2. Set `PICORUBY_ROOT` to a PicoRuby checkout with its submodules initialized.
 3. Run `bundle install` and `npm install`.
 4. Run `bundle exec rake doctor`, then `bundle exec rake`.
 5. Run `npm run dev`. Wrangler's custom build also runs Rake on startup and Ruby changes.
+
+```sh
+brew install emscripten
+export PATH="$(brew --prefix emscripten)/bin:$PATH"
+emcc --version
+```
+
+Emscripten 5.0.0 or later is accepted; 5.0.7 and Homebrew 6.0.9 are tested.
+Newer versions are accepted but not necessarily tested. If switching from emsdk,
+use a shell without `emsdk_env.sh` and unset `EMSDK`, `EM_CONFIG`, and `EM_CACHE`.
 
 The pinned Wrangler version is paired with compatibility date `2026-08-22`.
 Update and test them together; a dry-run alone does not start workerd.

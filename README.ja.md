@@ -7,7 +7,19 @@ Wasm実行時には不要です。npmパッケージの公開も不要です。
 
 ## クイックスタート（未公開版の開発中）
 
-このリポジトリで実行します。
+macOSでは、まず[Homebrew](https://formulae.brew.sh/formula/emscripten)経由でEmscriptenをインストールします。
+
+```sh
+brew install emscripten
+export PATH="$(brew --prefix emscripten)/bin:$PATH"
+emcc --version
+```
+
+Emscripten 5.0.0以上を使用できます。5.0.7およびHomebrew版6.0.9で動作確認済みです。
+新しい版もバージョンチェックを通りますが、すべての版を検証済みという意味ではありません。
+emsdkから切り替える場合は、`emsdk_env.sh`を読み込まないシェルを使い、`EMSDK`・`EM_CONFIG`・`EM_CACHE`をunsetしてツールチェーンの混在を避けてください。
+
+続いて、このリポジトリで実行します。
 
 ```sh
 bundle install
@@ -19,15 +31,14 @@ npm install
 export PICORUBY_ROOT=/path/to/picoruby
 # ビルド前に、下記の例に従ってbuild_config.rbのローカルmrbgemパスを設定
 
-# Emscripten 5.0.7を有効化してから実行
 bundle exec rake doctor
 bundle exec rake
 npm run dev
 ```
 
-PicoRubyはsubmodule初期化済みのチェックアウトを指定します。初期化・SDK導入はgemでは行いません。
+PicoRubyはsubmodule初期化済みのチェックアウトを指定します。初期化・Emscripten導入はgemでは行いません。
 `doctor` はPicoRubyの主要ファイル、emcc、emar、Node.js、jsonc-parserを確認します。
-ビルド時にはmrbgemが要求するEmscriptenの版も検査します。Node.jsはWranglerがサポートする版を使用してください。
+ビルド時にはEmscriptenが対応する版かも検査します。Node.jsはWranglerがサポートする版を使用してください。
 上流のシェルコマンド展開の制限により、ビルド用パスでは空白やシェル特殊文字を拒否します。
 
 配布gemを試す場合は `gem build picoruby-cloudflare-template.gemspec`、
@@ -162,7 +173,7 @@ bundle exec rake test:integration
 調査用に、表示した一時ディレクトリへ全成果物とステップ別ログを残します。
 
 検証対象: PicoRuby `33540f66d9aba633d4d3ebd6707d5c12baebb652`、上記Worker/Rack revision、
-Ruby 4.0.5、Emscripten 5.0.7、Node.js 26.8.1、Wrangler 4.125.0。
+Ruby 4.0.5、Emscripten 5.0.7およびHomebrew版6.0.9、Node.js 26.8.1、Wrangler 4.125.0。
 compatibility dateは固定Wranglerと組み合わせて確認した `2026-08-22` を使います。
 dry-runはworkerdを起動しないため、Wrangler/dateの更新時はローカルHTTP確認も必要です。
 PicoRubyやmruby submoduleのビルドAPI変更時には統合テストを再実行してください。

@@ -38,7 +38,7 @@ module Picoruby::Cloudflare::Template
       when "new"
         raise Error, parser.to_s unless argv.length == 1
         path = Generator.new(argv.first, **options).generate
-        out.puts "Created #{path}\nNext: cd #{path}\n  bundle install\n  npm install\n  # Set PICORUBY_ROOT and activate Emscripten, then:\n  bundle exec rake doctor\n  npm run dev"
+        out.puts "Created #{path}\nNext: cd #{path}\n  # On macOS: brew install emscripten (see README for PATH setup)\n  bundle install\n  npm install\n  # Set PICORUBY_ROOT, then:\n  bundle exec rake doctor\n  npm run dev"
       when "doctor"
         raise Error, parser.to_s unless argv.length <= 1 && options.empty?
         Project.new(root: argv.first || Dir.pwd).doctor(out: out)
