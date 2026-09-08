@@ -34,6 +34,10 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0.rc1"'
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
     assert_include File.read(File.join(destination, "README.md")), "brew install emscripten"
+    app = File.read(File.join(destination, "app.rb"))
+    assert_include app, "app = lambda do |env|"
+    assert_include app, "rescue"
+    assert_include app, "Internal Server Error"
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"
     assert_include config, "cf.picoruby_cloudflare_worker_wasm_mgem_dir"
