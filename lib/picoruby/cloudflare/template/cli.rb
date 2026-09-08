@@ -41,8 +41,9 @@ module Picoruby::Cloudflare::Template
       case command
       when "new"
         raise Error, parser.to_s unless argv.length == 1
-        path = Generator.new(argv.first, **options).generate do |file|
-          out.puts "    #{style("generate", BOLD_GREEN, out)}  #{file}"
+        destination = argv.first
+        path = Generator.new(destination, **options).generate do |file|
+          out.puts "    #{style("generate", BOLD_GREEN, out)}  #{File.join(destination, file)}"
         end
         out.puts "\nCreated #{path}\nNext:"
         out.puts "  #{style("cd #{path}", CYAN, out)}"

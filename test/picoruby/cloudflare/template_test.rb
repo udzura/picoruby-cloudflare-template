@@ -147,12 +147,17 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
   test "new command lists generated files and colors terminal instructions" do
     out = StringIO.new
     out.define_singleton_method(:tty?) { true }
-    status = Picoruby::Cloudflare::Template::CLI.run(["new", File.join(@tmp, "app")], out: out)
+    destination = "./app"
+    absolute_destination = nil
+    status = Dir.chdir(@tmp) do
+      absolute_destination = File.expand_path(destination)
+      Picoruby::Cloudflare::Template::CLI.run(["new", destination], out: out)
+    end
     assert_equal 0, status
     %w[Gemfile README.md Rakefile app.rb build_config.rb .gitignore package.json src/index.js wrangler.jsonc].each do |file|
-      assert_include out.string, "\e[1;32mgenerate\e[0m  #{file}"
+      assert_include out.string, "\e[1;32mgenerate\e[0m  #{File.join(destination, file)}"
     end
-    ["cd #{File.join(@tmp, "app")}", "brew install emscripten", "bundle install", "npm install", "bundle exec rake doctor", "npm run dev"].each do |command|
+    ["cd #{absolute_destination}", "brew install emscripten", "bundle install", "npm install", "bundle exec rake doctor", "npm run dev"].each do |command|
       assert_include out.string, "\e[36m#{command}\e[0m"
     end
   end
