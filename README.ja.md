@@ -42,10 +42,10 @@ PicoRubyはsubmodule初期化済みのチェックアウトを指定します。
 上流のシェルコマンド展開の制限により、ビルド用パスでは空白やシェル特殊文字を拒否します。
 
 配布gemを試す場合は `gem build picoruby-cloudflare-template.gemspec`、
-`gem install ./picoruby-cloudflare-template-0.1.0.rc1.gem` の後、
+`gem install ./picoruby-cloudflare-template-0.1.0.rc2.gem` の後、
 `picoruby-cloudflare new my-worker` を使えます。生成先で未公開版を解決するには `bundle install --local` を使用します。
-このリリース候補版を公開した後は `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc1` でインストールできます。
-`VERSION` とRubyGemsのメタデータ上のバージョンは、どちらも `0.1.0.rc1` です。
+このリリース候補版を公開した後は `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc2` でインストールできます。
+`VERSION` とRubyGemsのメタデータ上のバージョンは、どちらも `0.1.0.rc2` です。
 
 ## 生成物とビルド設定
 
