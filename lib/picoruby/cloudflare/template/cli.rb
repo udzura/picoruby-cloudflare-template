@@ -6,6 +6,10 @@ require_relative "project"
 
 module Picoruby::Cloudflare::Template
   class CLI
+    BOLD_GREEN = "\e[1;32m"
+    CYAN = "\e[36m"
+    RESET = "\e[0m"
+
     HELP = <<~TEXT.freeze
       Usage: picoruby-cloudflare COMMAND [OPTIONS]
 
@@ -37,8 +41,18 @@ module Picoruby::Cloudflare::Template
       case command
       when "new"
         raise Error, parser.to_s unless argv.length == 1
-        path = Generator.new(argv.first, **options).generate
-        out.puts "Created #{path}\nNext: cd #{path}\n  # On macOS: brew install emscripten (see README for PATH setup)\n  bundle install\n  npm install\n  # Set PICORUBY_ROOT, then:\n  bundle exec rake doctor\n  npm run dev"
+        path = Generator.new(argv.first, **options).generate do |file|
+          out.puts "    #{style("generate", BOLD_GREEN, out)}  #{file}"
+        end
+        out.puts "\nCreated #{path}\nNext:"
+        out.puts "  #{style("cd #{path}", CYAN, out)}"
+        out.puts "  # On macOS (see README for PATH setup):"
+        out.puts "  #{style("brew install emscripten", CYAN, out)}"
+        out.puts "  #{style("bundle install", CYAN, out)}"
+        out.puts "  #{style("npm install", CYAN, out)}"
+        out.puts "  # Set PICORUBY_ROOT, then:"
+        out.puts "  #{style("bundle exec rake doctor", CYAN, out)}"
+        out.puts "  #{style("npm run dev", CYAN, out)}"
       when "doctor"
         raise Error, parser.to_s unless argv.length <= 1 && options.empty?
         Project.new(root: argv.first || Dir.pwd).doctor(out: out)
@@ -49,6 +63,11 @@ module Picoruby::Cloudflare::Template
     rescue Error, OptionParser::ParseError => e
       err.puts e.message
       1
+    end
+
+    def self.style(text, escape, out)
+      return text unless out.respond_to?(:tty?) && out.tty?
+      "#{escape}#{text}#{RESET}"
     end
   end
 end
