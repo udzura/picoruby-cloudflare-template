@@ -108,6 +108,15 @@ class CrossBuildTest < Test::Unit::TestCase
     check_config source, env: {"PICORUBY_WORKER_WASM_GEM_DIR" => "/ignored-worker", "MRUBY_RACK_GEM_DIR" => "/ignored-rack"}
   end
 
+  test "default Worker source temporarily tracks master" do
+    check_config <<~'RUBY'
+      conf = MRuby::CrossBuild.new
+      raise unless conf.picoruby_cloudflare_worker_wasm_revision == "master"
+      conf.cloudflare_worker!
+      raise unless conf.gems.last.first == {github: "udzura/picoruby-cloudflare-worker-wasm", checksum_hash: "master"}
+    RUBY
+  end
+
   test "revision attributes override defaults independently for each target" do
     check_config <<~'RUBY'
       conf = MRuby::CrossBuild.new

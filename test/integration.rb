@@ -15,7 +15,7 @@ gem_root = File.expand_path("..", __dir__)
 root = Dir.mktmpdir("picoruby-template-integration-")
 project = File.join(root, "worker")
 puts "Integration artifacts and logs: #{root}"
-Picoruby::Cloudflare::Template::Generator.new(project, gem_path: gem_root).generate
+Picoruby::Cloudflare::Template::Generator.new(project, gem_path: gem_root, bindings: true).generate
 # These environment variables are inputs to the test harness only. The actual
 # build receives local mrbgem paths through explicit build_config attributes.
 overrides = {
@@ -67,14 +67,14 @@ begin
         chdir: project, out: output, err: output, pgroup: true)
     end
   end
-  await_response = lambda do |expected|
+  await_response = lambda do |path, expected|
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
     loop do
       raise "Local server did not respond; see #{dev_log}" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
       begin
         http = Net::HTTP.new("127.0.0.1", port, nil)
         http.open_timeout = http.read_timeout = 1
-        response = http.get("/")
+        response = http.get(path)
         break if response.code == "200" && response.body == expected
       rescue SystemCallError, IOError, Timeout::Error
         # Wait for the custom build and workerd startup/reload.
@@ -82,9 +82,11 @@ begin
       sleep 0.2
     end
   end
-  await_response.call("Hello from PicoRuby on Cloudflare!\n")
-  File.write(File.join(project, "app.rb"), original_app.sub('[message +', '["Reloaded: " + message +'))
-  await_response.call("Reloaded: Hello from PicoRuby on Cloudflare!\n")
+  await_response.call("/", "Hello from PicoRuby on Cloudflare!\n")
+  await_response.call("/kv", "Hello from Cloudflare KV!\n")
+  await_response.call("/queue", "Message sent to Cloudflare Queue!\n")
+  File.write(File.join(project, "app.rb"), original_app.sub('[value +', '["Reloaded: " + value +'))
+  await_response.call("/", "Reloaded: Hello from PicoRuby on Cloudflare!\n")
   puts "Local Wrangler HTTP and app hot reload passed"
 ensure
   if pid

@@ -23,7 +23,7 @@ emsdkから切り替える場合は、`emsdk_env.sh`を読み込まないシェ�
 
 ```sh
 bundle install
-bundle exec ruby exe/picoruby-cloudflare new ../my-worker --gem-path "$PWD"
+bundle exec ruby exe/picoruby-cloudflare new ../my-worker --bindings --gem-path "$PWD"
 cd ../my-worker
 bundle install
 npm install
@@ -49,9 +49,14 @@ PicoRubyはsubmodule初期化済みのチェックアウトを指定します。
 
 ## 生成物とビルド設定
 
-`new PATH [--name NAME] [--gem-path PATH]` はGemfile、Rakefile、build_config.rb、最小Rackアプリのapp.rb、
+`new PATH [--bindings] [--name NAME] [--gem-path PATH]` はGemfile、Rakefile、build_config.rb、最小Rackアプリのapp.rb、
 src/index.js、package.json、wrangler.jsonc、.gitignore、README.mdを生成します。
 生成先が存在する場合は空ディレクトリでも上書きしません。Gemfile.lockとpackage-lock.jsonはアプリ側でコミットしてください。
+
+`--bindings` を付けると、KVとQueueをすぐ試せる例をapp.rbとwrangler.jsoncへ追加します。
+同時に生成する `.picoruby-cloudflare-template.json` は、この2つの管理対象例のハッシュを記録します。
+今後対応bindingが増えた版では、`picoruby-cloudflare bindings PROJECT` を実行すると例を再生成できます。
+再生成は書き込み前に管理対象をすべて検査し、いずれかを編集済みなら何も変更せず停止します。その場合は手動で差分をマージしてください。
 
 ```ruby
 require "picoruby/cloudflare/build"
@@ -85,9 +90,10 @@ Sinatra等のフレームワークはアプリ側で追加します。ABI固有�
 revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。
 取得先の選択で `PICORUBY_WORKER_WASM_GEM_DIR` / `MRUBY_RACK_GEM_DIR` は参照せず、`worker:` / `rack:` 引数も受け取りません。
 
-既定のWorker revisionは `e6235bca616dbd4cec619cc0141facdea59a5541`、
-Rackは `05ba46eb0ab490a624a5f2dcb33249670933ff6b` に固定しています。
-revisionがリモート未公開の場合はローカル指定が必要です。gem公開前に、新規チェックアウトから固定revisionを取得できることも確認してください。
+次のリリースタグが利用可能になるまで、既定のWorker取得先は一時的に `master` を参照します。
+Rackは引き続き `05ba46eb0ab490a624a5f2dcb33249670933ff6b` に固定しています。
+再現可能な依存関係が必要な場合は、Worker revisionをタグまたはcommit SHAで上書きしてください。
+gem公開前には `master` をリリースタグへ置き換え、新規チェックアウトから両方を取得できることを確認します。
 
 `worker_export` に渡す相対パスは `project_root` 基準（省略時はbuild_configのディレクトリ）です。
 生成されたRakefileはPicoRubyのRakeを別プロセスで実行し、ビルドをアプリ内の `.picoruby-build/` に分離します。
@@ -113,7 +119,7 @@ generated/worker/
 Ruby/C・HAL・共通JS bridgeは実行時ライブラリが、このgemはテンプレート・CrossBuild DSL・export処理・薄いcreateWorkerエントリを所有します。
 共通JSとregistry生成スクリプトは、Wasmをビルドした**同じmrbgemチェックアウト**からコピーします。
 現在の取得場所は `spike/src/` と `spike/scripts/` です。別コピーの実装をこのgemで管理しません。
-レイアウト変更時はexporterと固定revisionを一緒に更新します。
+レイアウト変更時はexporterと設定済みWorker refを一緒に更新します。
 
 `createWorker` はリクエストごとにVMを生成・破棄し、異なるリクエストのenvを共有しません。
 低レベルの `createRuntime` / `dispatch` / `closeRuntime` も再exportします。

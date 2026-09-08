@@ -23,7 +23,7 @@ Then run the following from this repository:
 
 ```sh
 bundle install
-bundle exec ruby exe/picoruby-cloudflare new ../my-worker --gem-path "$PWD"
+bundle exec ruby exe/picoruby-cloudflare new ../my-worker --bindings --gem-path "$PWD"
 cd ../my-worker
 bundle install
 npm install
@@ -49,9 +49,14 @@ After this release candidate is published, install it with `gem install picoruby
 
 ## Generated files and build configuration
 
-`new PATH [--name NAME] [--gem-path PATH]` generates a Gemfile, Rakefile, build_config.rb, a minimal Rack app in app.rb,
+`new PATH [--bindings] [--name NAME] [--gem-path PATH]` generates a Gemfile, Rakefile, build_config.rb, a minimal Rack app in app.rb,
 src/index.js, package.json, wrangler.jsonc, .gitignore, and README.md.
 An existing destination is never overwritten, even if it is an empty directory. Commit Gemfile.lock and package-lock.json in your application repository.
+
+Pass `--bindings` to include ready-to-run KV and Queue examples in app.rb and wrangler.jsonc.
+The generated `.picoruby-cloudflare-template.json` records hashes of those two managed examples.
+Run `picoruby-cloudflare bindings PROJECT` with a future template version to refresh them as supported bindings expand.
+Regeneration checks every managed file before writing and changes nothing if either was edited; merge those changes manually instead.
 
 ```ruby
 require "picoruby/cloudflare/build"
@@ -85,9 +90,10 @@ A directory takes precedence over its revision, and relative directory paths are
 Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.
 Dependency source selection no longer reads `PICORUBY_WORKER_WASM_GEM_DIR` or `MRUBY_RACK_GEM_DIR`, or accepts `worker:` / `rack:` arguments.
 
-The default Worker revision is pinned to `e6235bca616dbd4cec619cc0141facdea59a5541`,
-and Rack to `05ba46eb0ab490a624a5f2dcb33249670933ff6b`.
-Use a local checkout if a revision has not been published to the remote repository. Before publishing this gem, verify that a fresh checkout can fetch the pinned revisions.
+The default Worker source temporarily targets `master` until its next release tag is available.
+Rack remains pinned to `05ba46eb0ab490a624a5f2dcb33249670933ff6b`.
+Override the Worker revision with a tag or commit SHA when a reproducible dependency is required.
+Before publishing this gem, replace `master` with the released tag and verify that a fresh checkout can fetch both sources.
 
 Relative paths passed to `worker_export` are resolved against `project_root`, which defaults to the build_config directory.
 The generated Rakefile runs PicoRuby's Rake in a separate process and keeps build output in the application's `.picoruby-build/` directory.
@@ -113,7 +119,7 @@ generated/worker/
 The runtime library owns the Ruby/C code, HAL, and shared JS bridge. This gem owns the templates, CrossBuild DSL, export logic, and thin createWorker entry point.
 Shared JS and registry generation scripts are copied from **the same mrbgem checkout** used to build Wasm.
 Their current locations are `spike/src/` and `spike/scripts/`. This gem does not maintain a separate copy of those implementations.
-If that layout changes, update the exporter and pinned revision together.
+If that layout changes, update the exporter and configured Worker ref together.
 
 `createWorker` creates and closes a VM for each request, without sharing env between requests.
 The low-level `createRuntime` / `dispatch` / `closeRuntime` functions are also re-exported.

@@ -8,7 +8,7 @@ end
 
 module Picoruby::Cloudflare::Template
   module CrossBuild
-    WORKER_REVISION = "e6235bca616dbd4cec619cc0141facdea59a5541".freeze
+    WORKER_REVISION = "master".freeze
     RACK_REVISION = "05ba46eb0ab490a624a5f2dcb33249670933ff6b".freeze
     CORE_GEMS = %w[mruby-array-ext mruby-catch mruby-class-ext mruby-enum-ext
                    mruby-hash-ext mruby-kernel-ext mruby-metaprog mruby-method

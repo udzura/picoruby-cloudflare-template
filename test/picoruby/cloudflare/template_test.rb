@@ -38,6 +38,8 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_include app, "app = lambda do |env|"
     assert_include app, "rescue"
     assert_include app, "Internal Server Error"
+    assert_not_include app, "Cloudflare::Queue"
+    assert !File.exist?(File.join(destination, ".picoruby-cloudflare-template.json"))
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"
     assert_include config, "cf.picoruby_cloudflare_worker_wasm_mgem_dir"
@@ -47,6 +49,51 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
       output, status = Open3.capture2e(RbConfig.ruby, "-c", File.join(destination, name))
       assert status.success?, output
     end
+  end
+
+  test "bindings flag generates KV and Queue examples with a regeneration manifest" do
+    destination = File.join(@tmp, "bindings-worker")
+    Picoruby::Cloudflare::Template::Generator.new(destination, bindings: true).generate
+    app = File.read(File.join(destination, "app.rb"))
+    wrangler = File.read(File.join(destination, "wrangler.jsonc"))
+    assert_include app, 'Cloudflare::KV.from_env(env, "CACHE_KV")'
+    assert_include app, 'Cloudflare::Queue.from_env(env, "EVENTS")'
+    assert_include wrangler, '"kv_namespaces"'
+    assert_include wrangler, '"queues"'
+    manifest = JSON.parse(File.read(File.join(destination, ".picoruby-cloudflare-template.json")))
+    assert_equal 1, manifest["format_version"]
+    assert_equal %w[kv queue], manifest["features"]
+    assert_equal %w[app.rb wrangler.jsonc], manifest["files"].keys
+  end
+
+  test "bindings can be added and safely regenerated without overwriting edits" do
+    destination = File.join(@tmp, "existing-worker")
+    Picoruby::Cloudflare::Template::Generator.new(destination).generate
+    statuses = []
+    Picoruby::Cloudflare::Template::BindingsGenerator.new(destination).generate do |status, file|
+      statuses << [status, file]
+    end
+    assert_equal [
+      [:update, "app.rb"], [:update, "wrangler.jsonc"],
+      [:generate, ".picoruby-cloudflare-template.json"],
+    ], statuses
+
+    statuses.clear
+    Picoruby::Cloudflare::Template::BindingsGenerator.new(destination).generate do |status, file|
+      statuses << [status, file]
+    end
+    assert statuses.all? { |status, _file| status == :identical }
+
+    app = File.join(destination, "app.rb")
+    File.write(app, File.read(app) + "# application edit\n")
+    wrangler = File.read(File.join(destination, "wrangler.jsonc"))
+    manifest = File.read(File.join(destination, ".picoruby-cloudflare-template.json"))
+    error = assert_raise(Picoruby::Cloudflare::Template::Error) do
+      Picoruby::Cloudflare::Template::BindingsGenerator.new(destination).generate
+    end
+    assert_include error.message, "modified files: app.rb"
+    assert_equal wrangler, File.read(File.join(destination, "wrangler.jsonc"))
+    assert_equal manifest, File.read(File.join(destination, ".picoruby-cloudflare-template.json"))
   end
 
   test "existing destinations including empty directories are not overwritten" do
@@ -98,6 +145,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
       assert_include out.string, "Usage: picoruby-cloudflare COMMAND [OPTIONS]"
       assert_include out.string, "Commands:"
       assert_include out.string, "new PATH"
+      assert_include out.string, "bindings PROJECT"
       assert_include out.string, "doctor [PROJECT]"
       assert_include out.string, "-h, --help"
       assert_equal "", err.string
@@ -142,6 +190,26 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_equal 0, status
     assert_include out.string, "brew install emscripten"
     assert_not_include out.string, "\e["
+  end
+
+  test "new command accepts the bindings flag" do
+    destination = File.join(@tmp, "bindings-worker")
+    out = StringIO.new
+    status = Picoruby::Cloudflare::Template::CLI.run(["new", destination, "--bindings"], out: out)
+    assert_equal 0, status
+    assert_include out.string, File.join(destination, ".picoruby-cloudflare-template.json")
+    assert_include File.read(File.join(destination, "app.rb")), "Cloudflare::KV"
+  end
+
+  test "bindings command upgrades an unedited generated project" do
+    destination = File.join(@tmp, "existing-worker")
+    Picoruby::Cloudflare::Template::Generator.new(destination).generate
+    out = StringIO.new
+    status = Picoruby::Cloudflare::Template::CLI.run(["bindings", destination], out: out)
+    assert_equal 0, status
+    assert_include out.string, "update  #{File.join(destination, 'app.rb')}"
+    assert_include out.string, "Bindings ready"
+    assert_include File.read(File.join(destination, "wrangler.jsonc")), '"kv_namespaces"'
   end
 
   test "new command lists generated files and colors terminal instructions" do

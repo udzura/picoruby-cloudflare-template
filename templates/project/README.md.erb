@@ -33,12 +33,12 @@ end
 ```
 
 The block receives the CrossBuild object itself and runs before build setup.
-Calling without a block is also supported. Both directory attributes default to `nil`, which selects GitHub sources at the
-revisions bundled in the template gem. Override those revisions in the same block using
+Calling without a block is also supported. Both directory attributes default to `nil`, which selects the GitHub sources
+configured by the template gem. Override those refs in the same block using
 `cf.picoruby_cloudflare_worker_wasm_revision` and `cf.mruby_rack_mgem_revision`.
 Directory attributes take precedence over revision attributes; relative paths
 are resolved against `build_config.rb`. These sources are not selected through
-environment variables. See the template gem README for tested revisions.
+environment variables. The Worker source temporarily tracks `master`; see the template gem README for details.
 
 `build_config.rb` selects mrbgems and exports an ES module to `generated/worker/`.
 Do not edit generated files. The generated Wasm, JS and app bytecode are one unit;
@@ -48,6 +48,11 @@ Configure bindings in `wrangler.jsonc`; the build regenerates `bindings.js`.
 Ruby can use `env["cloudflare.env"].CACHE_KV` or
 `Cloudflare::KV.from_env(env, "CACHE_KV")`, and similarly `Cloudflare::Queue.from_env`.
 String/JSON vars and secrets are accessible through Ruby `ENV`.
+
+If this project was generated with `--bindings`, app.rb exposes `/kv` and `/queue`
+examples and `.picoruby-cloudflare-template.json` tracks their generated state.
+Run `picoruby-cloudflare bindings .` with a newer template to refresh unedited
+binding examples. The command refuses to overwrite an edited app.rb or wrangler.jsonc.
 
 Keep secrets in `.dev.vars` locally and use `npx wrangler secret put NAME` remotely.
 Never put them in `app.rb`, `build_config.rb` or committed config files.

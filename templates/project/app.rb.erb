@@ -1,9 +1,24 @@
 app = lambda do |env|
   begin
+<% if @bindings -%>
+    value = case env["PATH_INFO"]
+    when "/kv"
+      kv = Cloudflare::KV.from_env(env, "CACHE_KV")
+      kv.put("greeting", "Hello from Cloudflare KV!", ttl: 60)
+      kv.get("greeting")
+    when "/queue"
+      Cloudflare::Queue.from_env(env, "EVENTS").send("Hello from PicoRuby!")
+      "Message sent to Cloudflare Queue!"
+    else
+      ENV["GREETING"] || "Hello from PicoRuby on Cloudflare!"
+    end
+    [200, { "content-type" => "text/plain; charset=utf-8" }, [value + "\n"]]
+<% else -%>
     # env["cloudflare.env"].CACHE_KV and
     # Cloudflare::KV.from_env(env, "CACHE_KV") refer to the same binding.
     message = ENV["GREETING"] || "Hello from PicoRuby on Cloudflare!"
     [200, { "content-type" => "text/plain; charset=utf-8" }, [message + "\n"]]
+<% end -%>
   rescue
     [500, { "content-type" => "text/plain; charset=utf-8" }, ["Internal Server Error\n"]]
   end

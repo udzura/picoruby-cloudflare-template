@@ -10,9 +10,21 @@
   "rules": [
     { "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }
   ],
+<% if @bindings -%>
+  "kv_namespaces": [
+    { "binding": "CACHE_KV" }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "EVENTS", "queue": "events" }
+    ]
+  },
+<% end -%>
   "vars": {
     "GREETING": "Hello from PicoRuby on Cloudflare!"
   }
+<% unless @bindings -%>
   // Add kv_namespaces / queues.producers here, then rebuild.
+<% end -%>
   // Keep secrets out of this file; use .dev.vars and wrangler secret put.
 }
