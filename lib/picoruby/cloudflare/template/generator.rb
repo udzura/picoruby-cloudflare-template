@@ -37,6 +37,7 @@ module Picoruby::Cloudflare::Template
         path = File.join(@destination, relative)
         FileUtils.mkdir_p(File.dirname(path))
         File.write(path, content)
+        yield relative if block_given?
       end
       @destination
     end

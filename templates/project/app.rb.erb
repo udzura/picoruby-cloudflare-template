@@ -1,10 +1,12 @@
-class App
-  def self.call(env)
+app = lambda do |env|
+  begin
     # env["cloudflare.env"].CACHE_KV and
     # Cloudflare::KV.from_env(env, "CACHE_KV") refer to the same binding.
     message = ENV["GREETING"] || "Hello from PicoRuby on Cloudflare!"
     [200, { "content-type" => "text/plain; charset=utf-8" }, [message + "\n"]]
+  rescue
+    [500, { "content-type" => "text/plain; charset=utf-8" }, ["Internal Server Error\n"]]
   end
 end
 
-Rackup::Handler::CloudflareWorker.run(App)
+Rackup::Handler::CloudflareWorker.run(app)

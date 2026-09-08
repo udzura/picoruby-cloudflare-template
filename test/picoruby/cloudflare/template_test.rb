@@ -34,6 +34,10 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0.rc1"'
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
     assert_include File.read(File.join(destination, "README.md")), "brew install emscripten"
+    app = File.read(File.join(destination, "app.rb"))
+    assert_include app, "app = lambda do |env|"
+    assert_include app, "rescue"
+    assert_include app, "Internal Server Error"
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"
     assert_include config, "cf.picoruby_cloudflare_worker_wasm_mgem_dir"
@@ -137,6 +141,25 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     status = Picoruby::Cloudflare::Template::CLI.run(["new", File.join(@tmp, "app")], out: out)
     assert_equal 0, status
     assert_include out.string, "brew install emscripten"
+    assert_not_include out.string, "\e["
+  end
+
+  test "new command lists generated files and colors terminal instructions" do
+    out = StringIO.new
+    out.define_singleton_method(:tty?) { true }
+    destination = "./app"
+    absolute_destination = nil
+    status = Dir.chdir(@tmp) do
+      absolute_destination = File.expand_path(destination)
+      Picoruby::Cloudflare::Template::CLI.run(["new", destination], out: out)
+    end
+    assert_equal 0, status
+    %w[Gemfile README.md Rakefile app.rb build_config.rb .gitignore package.json src/index.js wrangler.jsonc].each do |file|
+      assert_include out.string, "\e[1;32mgenerate\e[0m  #{File.join(destination, file)}"
+    end
+    ["cd #{absolute_destination}", "brew install emscripten", "bundle install", "npm install", "bundle exec rake doctor", "npm run dev"].each do |command|
+      assert_include out.string, "\e[36m#{command}\e[0m"
+    end
   end
 
   test "doctor gives dependency-specific installation guidance" do
