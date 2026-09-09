@@ -38,7 +38,7 @@ configured by the template gem. Override those refs in the same block using
 `cf.picoruby_cloudflare_worker_wasm_revision` and `cf.mruby_rack_mgem_revision`.
 Directory attributes take precedence over revision attributes; relative paths
 are resolved against `build_config.rb`. These sources are not selected through
-environment variables. The Worker source temporarily tracks `master`; see the template gem README for details.
+environment variables. The Worker source is pinned by the template gem; see its README for the current revision.
 
 `build_config.rb` selects mrbgems and exports an ES module to `generated/worker/`.
 Do not edit generated files. The generated Wasm, JS and app bytecode are one unit;

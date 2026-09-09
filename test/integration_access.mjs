@@ -19,7 +19,7 @@ try {
   globalThis.fetch = async request => {
     calls++;
     assert.equal(request.url, "https://my-team.cloudflareaccess.com/cdn-cgi/access/get-identity");
-    assert.equal(request.redirect, "error");
+    assert.equal(request.redirect, "manual");
     const token = request.headers.get("cookie").slice("CF_Authorization=".length);
     await Promise.resolve();
     return Response.json({ email: `${token}@example.test`, user_uuid: token });

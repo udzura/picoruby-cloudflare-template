@@ -91,10 +91,10 @@ Sinatra等のフレームワークはアプリ側で追加します。ABI固有�
 revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。
 取得先の選択で `PICORUBY_WORKER_WASM_GEM_DIR` / `MRUBY_RACK_GEM_DIR` は参照せず、`worker:` / `rack:` 引数も受け取りません。
 
-次のリリースタグが利用可能になるまで、既定のWorker取得先は一時的に `master` を参照します。
-Rackは引き続き `05ba46eb0ab490a624a5f2dcb33249670933ff6b` に固定しています。
+既定のWorker取得先は `67aaa676d8247beaf19cbbeaeecb78115e490529` に固定しています。
+Rackは `30802024e263a0dde1f3a8467e648a70625adfd4` に固定しています。
 再現可能な依存関係が必要な場合は、Worker revisionをタグまたはcommit SHAで上書きしてください。
-gem公開前には `master` をリリースタグへ置き換え、新規チェックアウトから両方を取得できることを確認します。
+gem公開前には、新規チェックアウトから両方の固定取得先を取得できることを確認します。
 
 `worker_export` に渡す相対パスは `project_root` 基準（省略時はbuild_configのディレクトリ）です。
 生成されたRakefileはPicoRubyのRakeを別プロセスで実行し、ビルドをアプリ内の `.picoruby-build/` に分離します。
@@ -175,7 +175,7 @@ JWT署名・アプリケーションのaudienceをローカル検証する機能
 通信・レスポンスの異常なら502を返し、後続アプリを呼びません。
 生成例では `/access` だけにミドルウェアを適用し、他のサンプル経路は公開のままです。
 
-Access対応はWorkerの `master` とmruby-rackの
+Access対応はWorkerの `67aaa676d8247beaf19cbbeaeecb78115e490529` とmruby-rackの
 `30802024e263a0dde1f3a8467e648a70625adfd4` に反映済みで、このテンプレートは標準でそれらを使用します。
 ローカルmrbgem checkoutの指定は不要です。
 
