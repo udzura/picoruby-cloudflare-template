@@ -53,7 +53,8 @@ After this release candidate is published, install it with `gem install picoruby
 src/index.js, package.json, wrangler.jsonc, .gitignore, and README.md.
 An existing destination is never overwritten, even if it is an empty directory. Commit Gemfile.lock and package-lock.json in your application repository.
 
-Pass `--bindings` to include ready-to-run KV and Queue examples in app.rb and wrangler.jsonc.
+Pass `--bindings` to include KV, Queue and Access identity examples in app.rb and wrangler.jsonc.
+The `/access` example requires `CF_ACCESS_TEAM` and a `CF_Authorization` cookie.
 The generated `.picoruby-cloudflare-template.json` records hashes of those two managed examples.
 Run `picoruby-cloudflare bindings PROJECT` with a future template version to refresh them as supported bindings expand.
 Regeneration checks every managed file before writing and changes nothing if either was edited; merge those changes manually instead.
@@ -146,6 +147,38 @@ token = ENV["API_TOKEN"]
 ```
 
 Queue sending currently supports UTF-8 strings only, matching the runtime API. Manage secrets through .dev.vars or `wrangler secret put`, and keep them out of Git.
+
+Access uses Rack middleware `Rack::Cloudflare::Access` (an alias of `Cloudflare::Access`):
+
+```ruby
+app = Rack::Builder.new do
+  use Rack::Cloudflare::Access, team: "my-team"
+  run lambda { |env|
+    identity = env["cloudflare.identity"]
+    [200, { "content-type" => "text/plain" }, [identity.email]]
+  }
+end
+Rackup::Handler::CloudflareWorker.run(app)
+```
+
+Omit `team:` to read `CF_ACCESS_TEAM` from the request's Worker environment.
+Use the prefix of `<team>.cloudflareaccess.com`, not the full URL.
+Access is an HTTP identity API, so it needs no KV/Queue-style resource binding.
+Before calling the application, the middleware reads the authorization cookie, fetches and decodes
+the identity, and stores an `AccessIdentity` (`email`, `user_uuid`, `raw_data`) in the Rack env.
+The helper `Cloudflare::Access.get_identity(token, team: "my-team")` is also available.
+It uses the generic `Cloudflare.fetch(url, method:, headers:, body:)` wrapper, which returns
+`status`, `headers` and a buffered UTF-8 `body` (up to 1 MiB, ten-second timeout, no redirects).
+Identity lookup does not locally validate JWT signatures or application audience. Protect the application with Access and validate
+tokens as described in the [Cloudflare documentation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/).
+The middleware returns 503 for missing/invalid configuration, 401 for a missing/invalid cookie
+or an Access 401/403 response, and 502 for upstream/protocol failures, without calling the application.
+The generated example applies middleware only to `/access`; other example routes remain public.
+
+Access support is included in Worker `master` and mruby-rack commit
+`30802024e263a0dde1f3a8467e648a70625adfd4`, which this template uses by default.
+No local mrbgem checkout overrides are required.
+
 With `npm run dev` / `npm run deploy`, Wrangler's custom build runs Rake.
 `build.watch_dir` covers app.rb and build_config.rb. Update the watch list when adding Ruby files.
 

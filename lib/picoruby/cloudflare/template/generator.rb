@@ -12,7 +12,7 @@ module Picoruby::Cloudflare::Template
     TEMPLATES = File.expand_path("../../../../templates", __dir__)
     BINDINGS_MANIFEST = ".picoruby-cloudflare-template.json"
     BINDINGS_FILES = %w[app.rb wrangler.jsonc].freeze
-    BINDINGS_FEATURES = %w[kv queue].freeze
+    BINDINGS_FEATURES = %w[kv queue access].freeze
 
     def initialize(destination, name: nil, gem_path: nil, bindings: false)
       @destination = File.expand_path(destination)

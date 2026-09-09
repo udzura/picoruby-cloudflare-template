@@ -49,10 +49,24 @@ Ruby can use `env["cloudflare.env"].CACHE_KV` or
 `Cloudflare::KV.from_env(env, "CACHE_KV")`, and similarly `Cloudflare::Queue.from_env`.
 String/JSON vars and secrets are accessible through Ruby `ENV`.
 
-If this project was generated with `--bindings`, app.rb exposes `/kv` and `/queue`
+If this project was generated with `--bindings`, app.rb exposes `/kv`, `/queue` and `/access`
 examples and `.picoruby-cloudflare-template.json` tracks their generated state.
 Run `picoruby-cloudflare bindings .` with a newer template to refresh unedited
 binding examples. The command refuses to overwrite an edited app.rb or wrangler.jsonc.
+
+For `/access`, set `CF_ACCESS_TEAM` to your team name (not its URL) in Wrangler vars
+or .dev.vars, and send a `CF_Authorization` cookie issued by Access.
+`Rack::Cloudflare::Access.new(app, team: "my-team")` is Rack middleware.
+Omit `team:` to read `CF_ACCESS_TEAM` from the Worker environment.
+Before calling the app, it stores the decoded identity in `env["cloudflare.identity"]`,
+with `email`, `user_uuid` and `raw_data`. The generated example wraps only `/access`.
+The helper `Cloudflare::Access.get_identity(token, team: "my-team")` calls
+`Cloudflare.fetch` from Ruby. Missing/invalid configuration returns 503; missing/invalid
+cookies and Access 401/403 responses return 401; upstream/protocol failures return 502.
+Failures do not call the downstream app. This does not locally validate JWT signatures or audience.
+Protect your application with Access and follow Cloudflare's token validation guidance.
+The default Worker and mruby-rack revisions include Access, cookie parsing and
+middleware keyword forwarding. No local mrbgem checkout overrides are required.
 
 Keep secrets in `.dev.vars` locally and use `npx wrangler secret put NAME` remotely.
 Never put them in `app.rb`, `build_config.rb` or committed config files.

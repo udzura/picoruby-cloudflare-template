@@ -21,6 +21,10 @@
   },
 <% end -%>
   "vars": {
+<% if @bindings -%>
+    // Set your team name (the prefix of <team>.cloudflareaccess.com).
+    "CF_ACCESS_TEAM": "",
+<% end -%>
     "GREETING": "Hello from PicoRuby on Cloudflare!"
   }
 <% unless @bindings -%>

@@ -15,7 +15,7 @@ module Picoruby::Cloudflare::Template
 
       Commands:
         new PATH [--bindings]  Generate a PicoRuby Cloudflare Worker project
-        bindings PROJECT      Add or refresh KV and Queue binding examples
+        bindings PROJECT      Add or refresh KV, Queue and Access examples
         doctor [PROJECT]       Check local Worker build prerequisites (default: current directory)
 
       Options:
@@ -35,7 +35,7 @@ module Picoruby::Cloudflare::Template
       options = {}
       parser = OptionParser.new do |opts|
         opts.banner = "Usage: picoruby-cloudflare new PATH [--bindings] [--name NAME] [--gem-path PATH]\n       picoruby-cloudflare bindings PROJECT\n       picoruby-cloudflare doctor [PROJECT]"
-        opts.on("--bindings", "Generate KV and Queue binding examples") { options[:bindings] = true }
+        opts.on("--bindings", "Generate KV, Queue and Access examples") { options[:bindings] = true }
         opts.on("--name NAME", "Worker name (defaults to directory name)") { options[:name] = _1 }
         opts.on("--gem-path PATH", "Use an unpublished local template gem") { options[:gem_path] = _1 }
       end

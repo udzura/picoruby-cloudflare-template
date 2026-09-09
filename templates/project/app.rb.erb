@@ -9,6 +9,9 @@ app = lambda do |env|
     when "/queue"
       Cloudflare::Queue.from_env(env, "EVENTS").send("Hello from PicoRuby!")
       "Message sent to Cloudflare Queue!"
+    when "/access"
+      identity = env["cloudflare.identity"]
+      identity.email || "Access identity has no email"
     else
       ENV["GREETING"] || "Hello from PicoRuby on Cloudflare!"
     end
@@ -24,4 +27,15 @@ app = lambda do |env|
   end
 end
 
+<% if @bindings -%>
+# Apply Access middleware to the identity example.
+access_app = Rack::Builder.new do
+  use Rack::Cloudflare::Access
+  run app
+end
+Rackup::Handler::CloudflareWorker.run(lambda do |env|
+  env["PATH_INFO"] == "/access" ? access_app.call(env) : app.call(env)
+end)
+<% else -%>
 Rackup::Handler::CloudflareWorker.run(app)
+<% end -%>

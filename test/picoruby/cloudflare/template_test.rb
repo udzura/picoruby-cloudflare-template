@@ -51,18 +51,21 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     end
   end
 
-  test "bindings flag generates KV and Queue examples with a regeneration manifest" do
+  test "bindings flag generates KV, Queue and Access examples with a regeneration manifest" do
     destination = File.join(@tmp, "bindings-worker")
     Picoruby::Cloudflare::Template::Generator.new(destination, bindings: true).generate
     app = File.read(File.join(destination, "app.rb"))
     wrangler = File.read(File.join(destination, "wrangler.jsonc"))
     assert_include app, 'Cloudflare::KV.from_env(env, "CACHE_KV")'
     assert_include app, 'Cloudflare::Queue.from_env(env, "EVENTS")'
+    assert_include app, 'use Rack::Cloudflare::Access'
+    assert_include app, 'env["cloudflare.identity"]'
+    assert_include wrangler, '"CF_ACCESS_TEAM": ""'
     assert_include wrangler, '"kv_namespaces"'
     assert_include wrangler, '"queues"'
     manifest = JSON.parse(File.read(File.join(destination, ".picoruby-cloudflare-template.json")))
     assert_equal 1, manifest["format_version"]
-    assert_equal %w[kv queue], manifest["features"]
+    assert_equal %w[kv queue access], manifest["features"]
     assert_equal %w[app.rb wrangler.jsonc], manifest["files"].keys
   end
 
@@ -94,6 +97,22 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_include error.message, "modified files: app.rb"
     assert_equal wrangler, File.read(File.join(destination, "wrangler.jsonc"))
     assert_equal manifest, File.read(File.join(destination, ".picoruby-cloudflare-template.json"))
+  end
+
+  test "bindings upgrades an unchanged older manifest to include Access" do
+    destination = File.join(@tmp, "older-worker")
+    Picoruby::Cloudflare::Template::Generator.new(destination, bindings: true).generate
+    app = File.join(destination, "app.rb")
+    previous_app = "# older generated KV and Queue application\n"
+    File.write(app, previous_app)
+    path = File.join(destination, ".picoruby-cloudflare-template.json")
+    manifest = JSON.parse(File.read(path))
+    manifest["features"] = %w[kv queue]
+    manifest["files"]["app.rb"] = Digest::SHA256.hexdigest(previous_app)
+    File.write(path, JSON.generate(manifest))
+    Picoruby::Cloudflare::Template::BindingsGenerator.new(destination).generate
+    assert_include File.read(app), "Rack::Cloudflare::Access"
+    assert_equal %w[kv queue access], JSON.parse(File.read(path))["features"]
   end
 
   test "existing destinations including empty directories are not overwritten" do
