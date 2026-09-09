@@ -8,11 +8,11 @@ end
 
 module Picoruby::Cloudflare::Template
   module CrossBuild
-    WORKER_REVISION = "e6235bca616dbd4cec619cc0141facdea59a5541".freeze
-    RACK_REVISION = "05ba46eb0ab490a624a5f2dcb33249670933ff6b".freeze
+    WORKER_REVISION = "67aaa676d8247beaf19cbbeaeecb78115e490529".freeze
+    RACK_REVISION = "30802024e263a0dde1f3a8467e648a70625adfd4".freeze
     CORE_GEMS = %w[mruby-array-ext mruby-catch mruby-class-ext mruby-enum-ext
                    mruby-hash-ext mruby-kernel-ext mruby-metaprog mruby-method
-                   mruby-numeric-ext mruby-object-ext mruby-proc-ext mruby-sprintf
+                   mruby-numeric-ext mruby-object-ext mruby-pack mruby-proc-ext mruby-sprintf
                    mruby-string-ext mruby-struct mruby-regexp].freeze
 
     attr_accessor :picoruby_cloudflare_worker_wasm_mgem_dir, :mruby_rack_mgem_dir

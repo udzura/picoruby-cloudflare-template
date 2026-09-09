@@ -15,7 +15,7 @@ gem_root = File.expand_path("..", __dir__)
 root = Dir.mktmpdir("picoruby-template-integration-")
 project = File.join(root, "worker")
 puts "Integration artifacts and logs: #{root}"
-Picoruby::Cloudflare::Template::Generator.new(project, gem_path: gem_root).generate
+Picoruby::Cloudflare::Template::Generator.new(project, gem_path: gem_root, bindings: true).generate
 # These environment variables are inputs to the test harness only. The actual
 # build receives local mrbgem paths through explicit build_config attributes.
 overrides = {
@@ -50,6 +50,7 @@ run.call("bundle", "install", "--local")
 run.call("npm", "install", "--ignore-scripts", "--no-audit", "--no-fund")
 run.call("bundle", "exec", "rake", "doctor", "build")
 run.call("npx", "wrangler", "deploy", "--dry-run", "--outdir", ".wrangler/dry-run")
+run.call("node", File.join(__dir__, "integration_access.mjs"), project)
 
 # Dry-run does not start workerd: catch compatibility-date and JSPI startup
 # failures with an actual local request, then verify custom-build hot reload.
@@ -67,24 +68,27 @@ begin
         chdir: project, out: output, err: output, pgroup: true)
     end
   end
-  await_response = lambda do |expected|
+  await_response = lambda do |path, expected, status = "200"|
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
     loop do
       raise "Local server did not respond; see #{dev_log}" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
       begin
         http = Net::HTTP.new("127.0.0.1", port, nil)
         http.open_timeout = http.read_timeout = 1
-        response = http.get("/")
-        break if response.code == "200" && response.body == expected
+        response = http.get(path)
+        break if response.code == status && response.body == expected
       rescue SystemCallError, IOError, Timeout::Error
         # Wait for the custom build and workerd startup/reload.
       end
       sleep 0.2
     end
   end
-  await_response.call("Hello from PicoRuby on Cloudflare!\n")
-  File.write(File.join(project, "app.rb"), original_app.sub('[message +', '["Reloaded: " + message +'))
-  await_response.call("Reloaded: Hello from PicoRuby on Cloudflare!\n")
+  await_response.call("/", "Hello from PicoRuby on Cloudflare!\n")
+  await_response.call("/kv", "Hello from Cloudflare KV!\n")
+  await_response.call("/queue", "Message sent to Cloudflare Queue!\n")
+  await_response.call("/access", "Set CF_ACCESS_TEAM to your Access team name.\n", "503")
+  File.write(File.join(project, "app.rb"), original_app.sub('[value +', '["Reloaded: " + value +'))
+  await_response.call("/", "Reloaded: Hello from PicoRuby on Cloudflare!\n")
   puts "Local Wrangler HTTP and app hot reload passed"
 ensure
   if pid

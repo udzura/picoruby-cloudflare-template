@@ -23,7 +23,7 @@ Then run the following from this repository:
 
 ```sh
 bundle install
-bundle exec ruby exe/picoruby-cloudflare new ../my-worker --gem-path "$PWD"
+bundle exec ruby exe/picoruby-cloudflare new ../my-worker --bindings --gem-path "$PWD"
 cd ../my-worker
 bundle install
 npm install
@@ -42,16 +42,22 @@ The build also checks that the Emscripten version is supported. Use a Node.js ve
 Build paths containing spaces or shell metacharacters are rejected because of upstream shell command expansion limitations.
 
 To try a packaged gem, run `gem build picoruby-cloudflare-template.gemspec`, followed by
-`gem install ./picoruby-cloudflare-template-0.1.0.rc1.gem` and
+`gem install ./picoruby-cloudflare-template-0.1.0.rc2.gem` and
 `picoruby-cloudflare new my-worker`. Use `bundle install --local` in the generated project to resolve the unpublished version.
-After this release candidate is published, install it with `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc1`.
-`VERSION` and the RubyGems metadata version are both `0.1.0.rc1`.
+After this release candidate is published, install it with `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc2`.
+`VERSION` and the RubyGems metadata version are both `0.1.0.rc2`.
 
 ## Generated files and build configuration
 
-`new PATH [--name NAME] [--gem-path PATH]` generates a Gemfile, Rakefile, build_config.rb, a minimal Rack app in app.rb,
+`new PATH [--bindings] [--name NAME] [--gem-path PATH]` generates a Gemfile, Rakefile, build_config.rb, a minimal Rack app in app.rb,
 src/index.js, package.json, wrangler.jsonc, .gitignore, and README.md.
 An existing destination is never overwritten, even if it is an empty directory. Commit Gemfile.lock and package-lock.json in your application repository.
+
+Pass `--bindings` to include KV, Queue and Access identity examples in app.rb and wrangler.jsonc.
+The `/access` example requires `CF_ACCESS_TEAM` and a `CF_Authorization` cookie.
+The generated `.picoruby-cloudflare-template.json` records hashes of those two managed examples.
+Run `picoruby-cloudflare bindings PROJECT` with a future template version to refresh them as supported bindings expand.
+Regeneration checks every managed file before writing and changes nothing if either was edited; merge those changes manually instead.
 
 ```ruby
 require "picoruby/cloudflare/build"
@@ -85,9 +91,10 @@ A directory takes precedence over its revision, and relative directory paths are
 Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.
 Dependency source selection no longer reads `PICORUBY_WORKER_WASM_GEM_DIR` or `MRUBY_RACK_GEM_DIR`, or accepts `worker:` / `rack:` arguments.
 
-The default Worker revision is pinned to `e6235bca616dbd4cec619cc0141facdea59a5541`,
-and Rack to `05ba46eb0ab490a624a5f2dcb33249670933ff6b`.
-Use a local checkout if a revision has not been published to the remote repository. Before publishing this gem, verify that a fresh checkout can fetch the pinned revisions.
+The default Worker source is pinned to `67aaa676d8247beaf19cbbeaeecb78115e490529`.
+Rack is pinned to `30802024e263a0dde1f3a8467e648a70625adfd4`.
+Override the Worker revision with a tag or commit SHA when a reproducible dependency is required.
+Before publishing this gem, verify that a fresh checkout can fetch both pinned sources.
 
 Relative paths passed to `worker_export` are resolved against `project_root`, which defaults to the build_config directory.
 The generated Rakefile runs PicoRuby's Rake in a separate process and keeps build output in the application's `.picoruby-build/` directory.
@@ -113,7 +120,7 @@ generated/worker/
 The runtime library owns the Ruby/C code, HAL, and shared JS bridge. This gem owns the templates, CrossBuild DSL, export logic, and thin createWorker entry point.
 Shared JS and registry generation scripts are copied from **the same mrbgem checkout** used to build Wasm.
 Their current locations are `spike/src/` and `spike/scripts/`. This gem does not maintain a separate copy of those implementations.
-If that layout changes, update the exporter and pinned revision together.
+If that layout changes, update the exporter and configured Worker ref together.
 
 `createWorker` creates and closes a VM for each request, without sharing env between requests.
 The low-level `createRuntime` / `dispatch` / `closeRuntime` functions are also re-exported.
@@ -140,6 +147,38 @@ token = ENV["API_TOKEN"]
 ```
 
 Queue sending currently supports UTF-8 strings only, matching the runtime API. Manage secrets through .dev.vars or `wrangler secret put`, and keep them out of Git.
+
+Access uses Rack middleware `Rack::Cloudflare::Access` (an alias of `Cloudflare::Access`):
+
+```ruby
+app = Rack::Builder.new do
+  use Rack::Cloudflare::Access, team: "my-team"
+  run lambda { |env|
+    identity = env["cloudflare.identity"]
+    [200, { "content-type" => "text/plain" }, [identity.email]]
+  }
+end
+Rackup::Handler::CloudflareWorker.run(app)
+```
+
+Omit `team:` to read `CF_ACCESS_TEAM` from the request's Worker environment.
+Use the prefix of `<team>.cloudflareaccess.com`, not the full URL.
+Access is an HTTP identity API, so it needs no KV/Queue-style resource binding.
+Before calling the application, the middleware reads the authorization cookie, fetches and decodes
+the identity, and stores an `AccessIdentity` (`email`, `user_uuid`, `raw_data`) in the Rack env.
+The helper `Cloudflare::Access.get_identity(token, team: "my-team")` is also available.
+It uses the generic `Cloudflare.fetch(url, method:, headers:, body:)` wrapper, which returns
+`status`, `headers` and a buffered UTF-8 `body` (up to 1 MiB, ten-second timeout, no redirects).
+Identity lookup does not locally validate JWT signatures or application audience. Protect the application with Access and validate
+tokens as described in the [Cloudflare documentation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/).
+The middleware returns 503 for missing/invalid configuration, 401 for a missing/invalid cookie
+or an Access 401/403 response, and 502 for upstream/protocol failures, without calling the application.
+The generated example applies middleware only to `/access`; other example routes remain public.
+
+Access support is included in Worker commit `67aaa676d8247beaf19cbbeaeecb78115e490529` and mruby-rack commit
+`30802024e263a0dde1f3a8467e648a70625adfd4`, which this template uses by default.
+No local mrbgem checkout overrides are required.
+
 With `npm run dev` / `npm run deploy`, Wrangler's custom build runs Rake.
 `build.watch_dir` covers app.rb and build_config.rb. Update the watch list when adding Ruby files.
 

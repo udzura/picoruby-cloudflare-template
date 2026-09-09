@@ -23,7 +23,7 @@ emsdkから切り替える場合は、`emsdk_env.sh`を読み込まないシェ�
 
 ```sh
 bundle install
-bundle exec ruby exe/picoruby-cloudflare new ../my-worker --gem-path "$PWD"
+bundle exec ruby exe/picoruby-cloudflare new ../my-worker --bindings --gem-path "$PWD"
 cd ../my-worker
 bundle install
 npm install
@@ -42,16 +42,22 @@ PicoRubyはsubmodule初期化済みのチェックアウトを指定します。
 上流のシェルコマンド展開の制限により、ビルド用パスでは空白やシェル特殊文字を拒否します。
 
 配布gemを試す場合は `gem build picoruby-cloudflare-template.gemspec`、
-`gem install ./picoruby-cloudflare-template-0.1.0.rc1.gem` の後、
+`gem install ./picoruby-cloudflare-template-0.1.0.rc2.gem` の後、
 `picoruby-cloudflare new my-worker` を使えます。生成先で未公開版を解決するには `bundle install --local` を使用します。
-このリリース候補版を公開した後は `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc1` でインストールできます。
-`VERSION` とRubyGemsのメタデータ上のバージョンは、どちらも `0.1.0.rc1` です。
+このリリース候補版を公開した後は `gem install picoruby-cloudflare-template --pre --version 0.1.0.rc2` でインストールできます。
+`VERSION` とRubyGemsのメタデータ上のバージョンは、どちらも `0.1.0.rc2` です。
 
 ## 生成物とビルド設定
 
-`new PATH [--name NAME] [--gem-path PATH]` はGemfile、Rakefile、build_config.rb、最小Rackアプリのapp.rb、
+`new PATH [--bindings] [--name NAME] [--gem-path PATH]` はGemfile、Rakefile、build_config.rb、最小Rackアプリのapp.rb、
 src/index.js、package.json、wrangler.jsonc、.gitignore、README.mdを生成します。
 生成先が存在する場合は空ディレクトリでも上書きしません。Gemfile.lockとpackage-lock.jsonはアプリ側でコミットしてください。
+
+`--bindings` を付けると、KV・Queue・Accessのユーザー情報取得例をapp.rbとwrangler.jsoncへ追加します。
+`/access` の例には `CF_ACCESS_TEAM` と `CF_Authorization` Cookieが必要です。
+同時に生成する `.picoruby-cloudflare-template.json` は、この2つの管理対象例のハッシュを記録します。
+今後対応bindingが増えた版では、`picoruby-cloudflare bindings PROJECT` を実行すると例を再生成できます。
+再生成は書き込み前に管理対象をすべて検査し、いずれかを編集済みなら何も変更せず停止します。その場合は手動で差分をマージしてください。
 
 ```ruby
 require "picoruby/cloudflare/build"
@@ -85,9 +91,10 @@ Sinatra等のフレームワークはアプリ側で追加します。ABI固有�
 revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。
 取得先の選択で `PICORUBY_WORKER_WASM_GEM_DIR` / `MRUBY_RACK_GEM_DIR` は参照せず、`worker:` / `rack:` 引数も受け取りません。
 
-既定のWorker revisionは `e6235bca616dbd4cec619cc0141facdea59a5541`、
-Rackは `05ba46eb0ab490a624a5f2dcb33249670933ff6b` に固定しています。
-revisionがリモート未公開の場合はローカル指定が必要です。gem公開前に、新規チェックアウトから固定revisionを取得できることも確認してください。
+既定のWorker取得先は `67aaa676d8247beaf19cbbeaeecb78115e490529` に固定しています。
+Rackは `30802024e263a0dde1f3a8467e648a70625adfd4` に固定しています。
+再現可能な依存関係が必要な場合は、Worker revisionをタグまたはcommit SHAで上書きしてください。
+gem公開前には、新規チェックアウトから両方の固定取得先を取得できることを確認します。
 
 `worker_export` に渡す相対パスは `project_root` 基準（省略時はbuild_configのディレクトリ）です。
 生成されたRakefileはPicoRubyのRakeを別プロセスで実行し、ビルドをアプリ内の `.picoruby-build/` に分離します。
@@ -113,7 +120,7 @@ generated/worker/
 Ruby/C・HAL・共通JS bridgeは実行時ライブラリが、このgemはテンプレート・CrossBuild DSL・export処理・薄いcreateWorkerエントリを所有します。
 共通JSとregistry生成スクリプトは、Wasmをビルドした**同じmrbgemチェックアウト**からコピーします。
 現在の取得場所は `spike/src/` と `spike/scripts/` です。別コピーの実装をこのgemで管理しません。
-レイアウト変更時はexporterと固定revisionを一緒に更新します。
+レイアウト変更時はexporterと設定済みWorker refを一緒に更新します。
 
 `createWorker` はリクエストごとにVMを生成・破棄し、異なるリクエストのenvを共有しません。
 低レベルの `createRuntime` / `dispatch` / `closeRuntime` も再exportします。
@@ -140,6 +147,38 @@ token = ENV["API_TOKEN"]
 ```
 
 Queueは現行APIに合わせてUTF-8文字列送信のみです。secretは.dev.varsまたは `wrangler secret put` で管理し、Gitへ追加しないでください。
+
+AccessにはRackミドルウェア `Rack::Cloudflare::Access`（`Cloudflare::Access` の別名）を使います。
+
+```ruby
+app = Rack::Builder.new do
+  use Rack::Cloudflare::Access, team: "my-team"
+  run lambda { |env|
+    identity = env["cloudflare.identity"]
+    [200, { "content-type" => "text/plain" }, [identity.email]]
+  }
+end
+Rackup::Handler::CloudflareWorker.run(app)
+```
+
+`team:` を省略すると、リクエストのWorker環境から `CF_ACCESS_TEAM` を読みます。
+値は `<team>.cloudflareaccess.com` のteam部分です。
+AccessはHTTPのユーザー情報取得APIなので、KV・Queueのようなリソースbindingは不要です。
+ミドルウェアがCookieからidentityを取得・デコードし、`env["cloudflare.identity"]` に設定してから後続アプリを呼びます。
+identityには `email`・`user_uuid`・`raw_data` があります。
+`Cloudflare::Access.get_identity(token, team: "my-team")` で直接取得することもできます。
+HTTP処理には汎用の `Cloudflare.fetch(url, method:, headers:, body:)` を使い、
+`status`・`headers`・UTF-8の `body` を返します（最大1 MiB、タイムアウト10秒、リダイレクトなし）。
+JWT署名・アプリケーションのaudienceをローカル検証する機能は含みません。
+アプリをAccessで保護し、トークン検証は[Cloudflareの説明](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/)に従って行ってください。
+ミドルウェアはteam未設定・不正なら503、Cookieなし・不正・Accessの401/403なら401、
+通信・レスポンスの異常なら502を返し、後続アプリを呼びません。
+生成例では `/access` だけにミドルウェアを適用し、他のサンプル経路は公開のままです。
+
+Access対応はWorkerの `67aaa676d8247beaf19cbbeaeecb78115e490529` とmruby-rackの
+`30802024e263a0dde1f3a8467e648a70625adfd4` に反映済みで、このテンプレートは標準でそれらを使用します。
+ローカルmrbgem checkoutの指定は不要です。
+
 `npm run dev` / `npm run deploy` ではWranglerのcustom buildがRakeを実行します。
 `build.watch_dir` はapp.rbとbuild_config.rbです。Rubyファイルを増やしたときは監視対象も更新してください。
 
