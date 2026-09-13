@@ -120,7 +120,7 @@ generated/worker/
 
 Ruby/C・HAL・共通JS bridgeは実行時ライブラリが、このgemはテンプレート・CrossBuild DSL・export処理・薄いcreateWorkerエントリを所有します。
 共通JSとregistry生成スクリプトは、Wasmをビルドした**同じmrbgemチェックアウト**からコピーします。
-現在の取得場所は `spike/src/` と `spike/scripts/` です。別コピーの実装をこのgemで管理しません。
+取得元は `templates/runtime/` と `templates/tools/` です。Workerリポジトリのspikeはビルド時に `spike/src/` と `spike/scripts/` へコピーします。
 レイアウト変更時はexporterと設定済みWorker refを一緒に更新します。
 
 `createWorker` はリクエストごとにVMを生成・破棄し、異なるリクエストのenvを共有しません。

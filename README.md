@@ -120,7 +120,7 @@ generated/worker/
 
 The runtime library owns the Ruby/C code, HAL, and shared JS bridge. This gem owns the templates, CrossBuild DSL, export logic, and thin createWorker entry point.
 Shared JS and registry generation scripts are copied from **the same mrbgem checkout** used to build Wasm.
-Their current locations are `spike/src/` and `spike/scripts/`. This gem does not maintain a separate copy of those implementations.
+Their source locations are `templates/runtime/` and `templates/tools/`. The Worker repository's spike copies them into `spike/src/` and `spike/scripts/` during its build.
 If that layout changes, update the exporter and configured Worker ref together.
 
 `createWorker` creates and closes a VM for each request, without sharing env between requests.

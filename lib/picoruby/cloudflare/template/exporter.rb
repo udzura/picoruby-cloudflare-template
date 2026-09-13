@@ -63,14 +63,14 @@ module Picoruby::Cloudflare::Template
 
     def export(runtime_js, runtime_wasm)
       %w[runtime.js host-bridge.js durable-object.js].each do |name|
-        write(File.join("runtime", name), File.binread(File.join(@gem_dir, "spike/src", name)))
+        write(File.join("runtime", name), File.binread(File.join(@gem_dir, "templates/runtime", name)))
       end
       write("runtime/picoruby-worker.js", File.binread(runtime_js))
       write("runtime/picoruby-worker.wasm", File.binread(runtime_wasm))
       # Keep parser and runtime from the same mrbgem checkout. Scripts are copied
       # below the project so Node resolves its jsonc-parser dependency there.
       %w[cloudflare-binding-registry.mjs generate-bindings.mjs].each do |name|
-        write(File.join("tools", name), File.binread(File.join(@gem_dir, "spike/scripts", name)))
+        write(File.join("tools", name), File.binread(File.join(@gem_dir, "templates/tools", name)))
       end
       Tempfile.create(["bindings", ".js"], @output) do |temp|
         temp.close
@@ -97,7 +97,7 @@ module Picoruby::Cloudflare::Template
     end
 
     def check_assets!
-      %w[spike/src/runtime.js spike/src/host-bridge.js spike/src/durable-object.js spike/scripts/cloudflare-binding-registry.mjs spike/scripts/generate-bindings.mjs].each do |path|
+      %w[templates/runtime/runtime.js templates/runtime/host-bridge.js templates/runtime/durable-object.js templates/tools/cloudflare-binding-registry.mjs templates/tools/generate-bindings.mjs].each do |path|
         raise Error, "Worker mrbgem is missing export asset #{path}; use the documented runtime revision" unless File.file?(File.join(@gem_dir, path))
       end
     end
