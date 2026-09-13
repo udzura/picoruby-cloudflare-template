@@ -62,7 +62,7 @@ module Picoruby::Cloudflare::Template
     end
 
     def export(runtime_js, runtime_wasm)
-      %w[runtime.js host-bridge.js].each do |name|
+      %w[runtime.js host-bridge.js durable-object.js].each do |name|
         write(File.join("runtime", name), File.binread(File.join(@gem_dir, "spike/src", name)))
       end
       write("runtime/picoruby-worker.js", File.binread(runtime_js))
@@ -82,7 +82,7 @@ module Picoruby::Cloudflare::Template
       end
       write("runtime/index.js", File.read(File.join(templates, "runtime/index.js")))
       write("package.json", JSON.pretty_generate({ private: true, type: "module", exports: "./runtime/index.js" }) + "\n")
-      artifacts = %w[app.bin bindings.js package.json runtime/index.js runtime/runtime.js runtime/host-bridge.js runtime/picoruby-worker.js runtime/picoruby-worker.wasm]
+      artifacts = %w[app.bin bindings.js package.json runtime/index.js runtime/runtime.js runtime/host-bridge.js runtime/durable-object.js runtime/picoruby-worker.js runtime/picoruby-worker.wasm]
       write("manifest.json", JSON.pretty_generate({
         format_version: 1, generator_version: VERSION, environment: @environment,
         worker_revision: worker_revision,
@@ -97,7 +97,7 @@ module Picoruby::Cloudflare::Template
     end
 
     def check_assets!
-      %w[spike/src/runtime.js spike/src/host-bridge.js spike/scripts/cloudflare-binding-registry.mjs spike/scripts/generate-bindings.mjs].each do |path|
+      %w[spike/src/runtime.js spike/src/host-bridge.js spike/src/durable-object.js spike/scripts/cloudflare-binding-registry.mjs spike/scripts/generate-bindings.mjs].each do |path|
         raise Error, "Worker mrbgem is missing export asset #{path}; use the documented runtime revision" unless File.file?(File.join(@gem_dir, path))
       end
     end

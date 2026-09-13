@@ -20,3 +20,4 @@ export function createWorker({ app, bindingTypes }) {
 }
 
 export { createCloudflareBindings, createRuntime, dispatch, closeRuntime } from "./runtime.js";
+export { PicoRubyDurableObject } from "./durable-object.js";

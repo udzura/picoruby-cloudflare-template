@@ -86,6 +86,7 @@ begin
   await_response.call("/", "Hello from PicoRuby on Cloudflare!\n")
   await_response.call("/kv", "Hello from Cloudflare KV!\n")
   await_response.call("/queue", "Message sent to Cloudflare Queue!\n")
+  await_response.call("/durable-object", "Hello from a Durable Object!\n")
   await_response.call("/access", "Set CF_ACCESS_TEAM to your Access team name.\n", "503")
   File.write(File.join(project, "app.rb"), original_app.sub('[value +', '["Reloaded: " + value +'))
   await_response.call("/", "Reloaded: Hello from PicoRuby on Cloudflare!\n")

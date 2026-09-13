@@ -1,4 +1,5 @@
 /.bundle/
+/.wrangler/
 /.yardoc
 /_yardoc/
 /coverage/

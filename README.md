@@ -53,7 +53,7 @@ After this release candidate is published, install it with `gem install picoruby
 src/index.js, package.json, wrangler.jsonc, .gitignore, and README.md.
 An existing destination is never overwritten, even if it is an empty directory. Commit Gemfile.lock and package-lock.json in your application repository.
 
-Pass `--bindings` to include KV, Queue and Access identity examples in app.rb and wrangler.jsonc.
+Pass `--bindings` to include KV, Queue, Durable Object and Access identity examples in app.rb and wrangler.jsonc.
 The `/access` example requires `CF_ACCESS_TEAM` and a `CF_Authorization` cookie.
 The generated `.picoruby-cloudflare-template.json` records hashes of those two managed examples.
 Run `picoruby-cloudflare bindings PROJECT` with a future template version to refresh them as supported bindings expand.
@@ -91,7 +91,7 @@ A directory takes precedence over its revision, and relative directory paths are
 Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.
 Dependency source selection no longer reads `PICORUBY_WORKER_WASM_GEM_DIR` or `MRUBY_RACK_GEM_DIR`, or accepts `worker:` / `rack:` arguments.
 
-The default Worker source is pinned to `67aaa676d8247beaf19cbbeaeecb78115e490529`.
+The default Worker source is pinned to `9d05a2692bfba9b39dac3bc537230bfd20023365`.
 Rack is pinned to `30802024e263a0dde1f3a8467e648a70625adfd4`.
 Override the Worker revision with a tag or commit SHA when a reproducible dependency is required.
 Before publishing this gem, verify that a fresh checkout can fetch both pinned sources.
@@ -112,6 +112,7 @@ generated/worker/
     index.js              # createWorker({ app, bindingTypes })
     runtime.js
     host-bridge.js
+    durable-object.js
     picoruby-worker.js
     picoruby-worker.wasm
   tools/                  # Binding registry generation scripts
@@ -123,6 +124,7 @@ Their current locations are `spike/src/` and `spike/scripts/`. This gem does not
 If that layout changes, update the exporter and configured Worker ref together.
 
 `createWorker` creates and closes a VM for each request, without sharing env between requests.
+The generated runtime also exports `PicoRubyDurableObject` for Wrangler.
 The low-level `createRuntime` / `dispatch` / `closeRuntime` functions are also re-exported.
 If you explicitly reuse a VM, the runtime library serializes dispatches to that VM.
 The output is intended to be bundled with Wrangler; it does not make `.wasm` / `.bin` imports directly usable in Node.js.
@@ -134,7 +136,8 @@ However, the tested PicoRuby version rewrites src/version.c on every build, so t
 
 ## Bindings, environments, and Wrangler
 
-The type registry is generated from `kv_namespaces` / `queues.producers` in wrangler.jsonc.
+The type registry is generated from `kv_namespaces`, `queues.producers`, and
+`durable_objects.bindings` in wrangler.jsonc.
 JSONC comments and trailing commas are supported. Invalid configuration, duplicate binding names, and nonexistent environments cause build errors.
 Variable values and secrets are not embedded in build artifacts.
 
@@ -143,9 +146,15 @@ kv = Cloudflare::KV.from_env(env, "CACHE_KV")
 kv.put("key", "value", ttl: 60)
 value = env["cloudflare.env"].CACHE_KV.get("key")
 Cloudflare::Queue.from_env(env, "EVENTS").send("created")
+objects = Cloudflare::DurableObject.from_env(env, "OBJECTS")
+objects.put("counter", { "value" => 1 })
+counter = objects.get("counter")
 token = ENV["API_TOKEN"]
 ```
 
+Durable Object `put` accepts a `Cloudflare::DurableObject::POJO`, a simple Hash
+or Array, or an object responding to `to_pojo`; `get` returns a `POJO` for a
+JSON object and an Array containing POJOs for a JSON array.
 Queue sending currently supports UTF-8 strings only, matching the runtime API. Manage secrets through .dev.vars or `wrangler secret put`, and keep them out of Git.
 
 Access uses Rack middleware `Rack::Cloudflare::Access` (an alias of `Cloudflare::Access`):
@@ -175,8 +184,8 @@ The middleware returns 503 for missing/invalid configuration, 401 for a missing/
 or an Access 401/403 response, and 502 for upstream/protocol failures, without calling the application.
 The generated example applies middleware only to `/access`; other example routes remain public.
 
-Access support is included in Worker commit `67aaa676d8247beaf19cbbeaeecb78115e490529` and mruby-rack commit
-`30802024e263a0dde1f3a8467e648a70625adfd4`, which this template uses by default.
+Worker commit `9d05a2692bfba9b39dac3bc537230bfd20023365` includes Access and Durable Object support.
+mruby-rack commit `30802024e263a0dde1f3a8467e648a70625adfd4` includes Access middleware support. This template uses both by default.
 No local mrbgem checkout overrides are required.
 
 With `npm run dev` / `npm run deploy`, Wrangler's custom build runs Rake.

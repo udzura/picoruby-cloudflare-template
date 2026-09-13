@@ -53,7 +53,7 @@ PicoRubyはsubmodule初期化済みのチェックアウトを指定します。
 src/index.js、package.json、wrangler.jsonc、.gitignore、README.mdを生成します。
 生成先が存在する場合は空ディレクトリでも上書きしません。Gemfile.lockとpackage-lock.jsonはアプリ側でコミットしてください。
 
-`--bindings` を付けると、KV・Queue・Accessのユーザー情報取得例をapp.rbとwrangler.jsoncへ追加します。
+`--bindings` を付けると、KV・Queue・Durable Object・Accessのユーザー情報取得例をapp.rbとwrangler.jsoncへ追加します。
 `/access` の例には `CF_ACCESS_TEAM` と `CF_Authorization` Cookieが必要です。
 同時に生成する `.picoruby-cloudflare-template.json` は、この2つの管理対象例のハッシュを記録します。
 今後対応bindingが増えた版では、`picoruby-cloudflare bindings PROJECT` を実行すると例を再生成できます。
@@ -91,7 +91,7 @@ Sinatra等のフレームワークはアプリ側で追加します。ABI固有�
 revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。
 取得先の選択で `PICORUBY_WORKER_WASM_GEM_DIR` / `MRUBY_RACK_GEM_DIR` は参照せず、`worker:` / `rack:` 引数も受け取りません。
 
-既定のWorker取得先は `67aaa676d8247beaf19cbbeaeecb78115e490529` に固定しています。
+既定のWorker取得先は `9d05a2692bfba9b39dac3bc537230bfd20023365` に固定しています。
 Rackは `30802024e263a0dde1f3a8467e648a70625adfd4` に固定しています。
 再現可能な依存関係が必要な場合は、Worker revisionをタグまたはcommit SHAで上書きしてください。
 gem公開前には、新規チェックアウトから両方の固定取得先を取得できることを確認します。
@@ -112,6 +112,7 @@ generated/worker/
     index.js              # createWorker({ app, bindingTypes })
     runtime.js
     host-bridge.js
+    durable-object.js
     picoruby-worker.js
     picoruby-worker.wasm
   tools/                  # binding registry生成スクリプト
@@ -123,6 +124,7 @@ Ruby/C・HAL・共通JS bridgeは実行時ライブラリが、このgemはテ�
 レイアウト変更時はexporterと設定済みWorker refを一緒に更新します。
 
 `createWorker` はリクエストごとにVMを生成・破棄し、異なるリクエストのenvを共有しません。
+生成runtimeはWrangler向けに `PicoRubyDurableObject` もexportします。
 低レベルの `createRuntime` / `dispatch` / `closeRuntime` も再exportします。
 明示的にVMを再利用した場合、同じVMへのdispatchは実行時ライブラリが直列化します。
 出力はWranglerでバンドルする前提です。Node.jsがそのまま `.wasm` / `.bin` importできるという意味ではありません。
@@ -134,7 +136,7 @@ registryは環境変更を反映するため毎回検証・生成します。元
 
 ## bindings・環境・Wrangler
 
-wrangler.jsoncの `kv_namespaces` / `queues.producers` から型registryを生成します。
+wrangler.jsoncの `kv_namespaces`・`queues.producers`・`durable_objects.bindings` から型registryを生成します。
 JSONCのコメント・末尾カンマに対応し、不正な設定・重複名・存在しない環境はビルドエラーにします。
 varsの値やsecretはビルド成果物へ埋め込みません。
 
@@ -143,9 +145,15 @@ kv = Cloudflare::KV.from_env(env, "CACHE_KV")
 kv.put("key", "value", ttl: 60)
 value = env["cloudflare.env"].CACHE_KV.get("key")
 Cloudflare::Queue.from_env(env, "EVENTS").send("created")
+objects = Cloudflare::DurableObject.from_env(env, "OBJECTS")
+objects.put("counter", { "value" => 1 })
+counter = objects.get("counter")
 token = ENV["API_TOKEN"]
 ```
 
+Durable Objectの `put` は `Cloudflare::DurableObject::POJO`、単純なHash/Array、
+または `to_pojo` に反応するオブジェクトを受け取ります。`get` はJSON objectなら `POJO`、
+JSON arrayなら内部のobjectをPOJO化したArrayを返します。
 Queueは現行APIに合わせてUTF-8文字列送信のみです。secretは.dev.varsまたは `wrangler secret put` で管理し、Gitへ追加しないでください。
 
 AccessにはRackミドルウェア `Rack::Cloudflare::Access`（`Cloudflare::Access` の別名）を使います。
@@ -175,8 +183,8 @@ JWT署名・アプリケーションのaudienceをローカル検証する機能
 通信・レスポンスの異常なら502を返し、後続アプリを呼びません。
 生成例では `/access` だけにミドルウェアを適用し、他のサンプル経路は公開のままです。
 
-Access対応はWorkerの `67aaa676d8247beaf19cbbeaeecb78115e490529` とmruby-rackの
-`30802024e263a0dde1f3a8467e648a70625adfd4` に反映済みで、このテンプレートは標準でそれらを使用します。
+Workerの `9d05a2692bfba9b39dac3bc537230bfd20023365` はAccess・Durable Objectに対応しています。
+mruby-rackの `30802024e263a0dde1f3a8467e648a70625adfd4` はAccessミドルウェアに対応し、このテンプレートは両方を標準で使用します。
 ローカルmrbgem checkoutの指定は不要です。
 
 `npm run dev` / `npm run deploy` ではWranglerのcustom buildがRakeを実行します。

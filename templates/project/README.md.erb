@@ -47,9 +47,12 @@ use Wrangler to bundle them, not a plain Node.js import of `src/index.js`.
 Configure bindings in `wrangler.jsonc`; the build regenerates `bindings.js`.
 Ruby can use `env["cloudflare.env"].CACHE_KV` or
 `Cloudflare::KV.from_env(env, "CACHE_KV")`, and similarly `Cloudflare::Queue.from_env`.
+Durable Objects use `Cloudflare::DurableObject.from_env`; `put` accepts POJO,
+Hash, Array, or an object responding to `to_pojo`.
 String/JSON vars and secrets are accessible through Ruby `ENV`.
 
-If this project was generated with `--bindings`, app.rb exposes `/kv`, `/queue` and `/access`
+If this project was generated with `--bindings`, app.rb exposes `/kv`, `/queue`,
+`/durable-object` and `/access`
 examples and `.picoruby-cloudflare-template.json` tracks their generated state.
 Run `picoruby-cloudflare bindings .` with a newer template to refresh unedited
 binding examples. The command refuses to overwrite an edited app.rb or wrangler.jsonc.
