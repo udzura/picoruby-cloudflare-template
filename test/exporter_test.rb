@@ -87,6 +87,29 @@ class ExporterTest < Test::Unit::TestCase
     assert_include error.message, "expected >= 5.0.0"
   end
 
+  test "export assets are read from the worker templates directory" do
+    assets = %w[
+      templates/runtime/runtime.js
+      templates/runtime/host-bridge.js
+      templates/runtime/durable-object.js
+      templates/tools/cloudflare-binding-registry.mjs
+      templates/tools/generate-bindings.mjs
+    ]
+    assets.each do |path|
+      FileUtils.mkdir_p(File.dirname(File.join(@tmp, path)))
+      File.write(File.join(@tmp, path), path)
+    end
+
+    assert_nothing_raised do
+      Picoruby::Cloudflare::Template::Exporter.instance_method(:check_assets!).bind_call(@exporter)
+    end
+    File.unlink(File.join(@tmp, assets.last))
+    error = assert_raise(Picoruby::Cloudflare::Template::Error) do
+      Picoruby::Cloudflare::Template::Exporter.instance_method(:check_assets!).bind_call(@exporter)
+    end
+    assert_include error.message, assets.last
+  end
+
   test "export uses target compiler, preserves unchanged artifacts and repairs missing Wasm" do
     build
     bytecode = File.join(@tmp, "generated/worker/app.bin")

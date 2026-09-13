@@ -9,6 +9,10 @@ app = lambda do |env|
     when "/queue"
       Cloudflare::Queue.from_env(env, "EVENTS").send("Hello from PicoRuby!")
       "Message sent to Cloudflare Queue!"
+    when "/durable-object"
+      store = Cloudflare::DurableObject.from_env(env, "OBJECTS")
+      store.put("example", { "message" => "Hello from a Durable Object!" })
+      store.get("example")["message"]
     when "/access"
       identity = env["cloudflare.identity"]
       identity.email || "Access identity has no email"

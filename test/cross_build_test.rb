@@ -112,7 +112,7 @@ class CrossBuildTest < Test::Unit::TestCase
     check_config <<~'RUBY'
       conf = MRuby::CrossBuild.new
       revision = Picoruby::Cloudflare::Template::CrossBuild::WORKER_REVISION
-      raise unless revision == "67aaa676d8247beaf19cbbeaeecb78115e490529"
+      raise unless revision == "5590e3ff32714ebcec35c53e1fad63156540e425"
       raise unless conf.picoruby_cloudflare_worker_wasm_revision == revision
       conf.cloudflare_worker!
       raise unless conf.gems.last.first == {github: "udzura/picoruby-cloudflare-worker-wasm", checksum_hash: revision}

@@ -19,6 +19,14 @@
       { "binding": "EVENTS", "queue": "events" }
     ]
   },
+  "durable_objects": {
+    "bindings": [
+      { "name": "OBJECTS", "class_name": "PicoRubyDurableObject" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PicoRubyDurableObject"] }
+  ],
 <% end -%>
   "vars": {
 <% if @bindings -%>
@@ -28,7 +36,7 @@
     "GREETING": "Hello from PicoRuby on Cloudflare!"
   }
 <% unless @bindings -%>
-  // Add kv_namespaces / queues.producers here, then rebuild.
+  // Add kv_namespaces / queues.producers / durable_objects.bindings here, then rebuild.
 <% end -%>
   // Keep secrets out of this file; use .dev.vars and wrangler secret put.
 }
