@@ -91,7 +91,7 @@ A directory takes precedence over its revision, and relative directory paths are
 Revision attributes default to the values bundled in this gem; assigning `nil` restores those defaults.
 Dependency source selection no longer reads `PICORUBY_WORKER_WASM_GEM_DIR` or `MRUBY_RACK_GEM_DIR`, or accepts `worker:` / `rack:` arguments.
 
-The default Worker source is pinned to `9d05a2692bfba9b39dac3bc537230bfd20023365`.
+The default Worker source is pinned to `5590e3ff32714ebcec35c53e1fad63156540e425`.
 Rack is pinned to `30802024e263a0dde1f3a8467e648a70625adfd4`.
 Override the Worker revision with a tag or commit SHA when a reproducible dependency is required.
 Before publishing this gem, verify that a fresh checkout can fetch both pinned sources.
@@ -184,7 +184,7 @@ The middleware returns 503 for missing/invalid configuration, 401 for a missing/
 or an Access 401/403 response, and 502 for upstream/protocol failures, without calling the application.
 The generated example applies middleware only to `/access`; other example routes remain public.
 
-Worker commit `9d05a2692bfba9b39dac3bc537230bfd20023365` includes Access and Durable Object support.
+Worker commit `5590e3ff32714ebcec35c53e1fad63156540e425` includes Access and Durable Object support.
 mruby-rack commit `30802024e263a0dde1f3a8467e648a70625adfd4` includes Access middleware support. This template uses both by default.
 No local mrbgem checkout overrides are required.
 

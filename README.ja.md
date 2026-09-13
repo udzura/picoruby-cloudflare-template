@@ -91,7 +91,7 @@ Sinatra等のフレームワークはアプリ側で追加します。ABI固有�
 revision属性のデフォルトはこのgemに組み込まれた値です。`nil` を代入するとデフォルトに戻ります。
 取得先の選択で `PICORUBY_WORKER_WASM_GEM_DIR` / `MRUBY_RACK_GEM_DIR` は参照せず、`worker:` / `rack:` 引数も受け取りません。
 
-既定のWorker取得先は `9d05a2692bfba9b39dac3bc537230bfd20023365` に固定しています。
+既定のWorker取得先は `5590e3ff32714ebcec35c53e1fad63156540e425` に固定しています。
 Rackは `30802024e263a0dde1f3a8467e648a70625adfd4` に固定しています。
 再現可能な依存関係が必要な場合は、Worker revisionをタグまたはcommit SHAで上書きしてください。
 gem公開前には、新規チェックアウトから両方の固定取得先を取得できることを確認します。
@@ -183,7 +183,7 @@ JWT署名・アプリケーションのaudienceをローカル検証する機能
 通信・レスポンスの異常なら502を返し、後続アプリを呼びません。
 生成例では `/access` だけにミドルウェアを適用し、他のサンプル経路は公開のままです。
 
-Workerの `9d05a2692bfba9b39dac3bc537230bfd20023365` はAccess・Durable Objectに対応しています。
+Workerの `5590e3ff32714ebcec35c53e1fad63156540e425` はAccess・Durable Objectに対応しています。
 mruby-rackの `30802024e263a0dde1f3a8467e648a70625adfd4` はAccessミドルウェアに対応し、このテンプレートは両方を標準で使用します。
 ローカルmrbgem checkoutの指定は不要です。
 
