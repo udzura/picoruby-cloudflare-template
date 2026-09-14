@@ -8,11 +8,10 @@ export function createWorker({ app, bindingTypes }) {
       try {
         return await handleRequest(createPicoRuby, wasm, app, request, createCloudflareBindings(env, bindingTypes));
       } catch (error) {
-        // Do not log host error messages: upstream services may include secrets.
+        console.error("PicoRuby Worker request failed", error);
         if (error instanceof RequestBodyTooLargeError) {
           return new Response("Request body too large", { status: 413 });
         }
-        console.error("PicoRuby Worker request failed");
         return new Response("PicoRuby Worker runtime error", { status: 500 });
       }
     },

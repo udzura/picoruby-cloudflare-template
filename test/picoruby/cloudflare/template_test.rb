@@ -36,9 +36,11 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_include File.read(File.join(destination, "README.md")), "brew install emscripten"
     app = File.read(File.join(destination, "app.rb"))
     assert_include app, "app = lambda do |env|"
-    assert_include app, "rescue"
-    assert_include app, "Internal Server Error"
+    assert_not_include app, "rescue"
+    assert_not_include app, "Internal Server Error"
     assert_not_include app, "Cloudflare::Queue"
+    runtime_entry = File.read(File.join(__dir__, "../../../templates/runtime/index.js"))
+    assert_include runtime_entry, 'console.error("PicoRuby Worker request failed", error)'
     assert !File.exist?(File.join(destination, ".picoruby-cloudflare-template.json"))
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"
