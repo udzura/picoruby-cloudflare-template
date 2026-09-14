@@ -31,7 +31,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
       assert_path_exist(File.join(destination, name))
     end
     assert_equal "my-worker", JSON.parse(File.read(File.join(destination, "package.json")))["name"]
-    assert_include File.read(File.join(destination, "Gemfile")), '"~> 0.1.0.rc2"'
+    assert_include File.read(File.join(destination, "Gemfile")), %Q["~> #{::Picoruby::Cloudflare::Template::VERSION}"]
     assert_include File.read(File.join(destination, ".gitignore")), "/.dev.vars"
     assert_include File.read(File.join(destination, "README.md")), "brew install emscripten"
     app = File.read(File.join(destination, "app.rb"))
