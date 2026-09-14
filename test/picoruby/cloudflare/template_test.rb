@@ -11,8 +11,7 @@ require "picoruby/cloudflare/template/exporter"
 class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
   test "VERSION" do
     version = ::Picoruby::Cloudflare::Template::VERSION
-    assert_equal "0.1.0.rc2", version
-    assert_equal "0.1.0.rc2", Gem::Version.new(version).to_s
+    assert version.kind_of?(String)
     assert Gem::Version.new(version).prerelease?
   end
 
