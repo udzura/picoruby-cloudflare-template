@@ -3,7 +3,7 @@
 module Picoruby
   module Cloudflare
     module Template
-      VERSION = "0.1.0.rc4"
+      VERSION = "0.1.0"
     end
   end
 end
