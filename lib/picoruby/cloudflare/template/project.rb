@@ -3,6 +3,7 @@
 require "open3"
 require "rbconfig"
 require "rake"
+require "fileutils"
 require_relative "../template"
 
 module Picoruby::Cloudflare::Template
@@ -52,9 +53,15 @@ module Picoruby::Cloudflare::Template
       raise Error, "PicoRuby build failed" unless system(env, *command, chdir: root)
     end
 
+    def clean
+      FileUtils.rm_rf(File.join(@root, ".picoruby-build"))
+    end
+
     def define_tasks
       desc "Build PicoRuby and export the Worker ES module"
       task(:build) { build }
+      desc "Remove PicoRuby build artifacts"
+      task(:clean) { clean }
       desc "Check local Worker build prerequisites"
       task(:doctor) { doctor }
       task default: :build

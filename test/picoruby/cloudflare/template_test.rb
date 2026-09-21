@@ -196,15 +196,26 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_equal [], Dir.children(@tmp)
   end
 
-  test "project defines build and doctor tasks without loading MRuby" do
+  test "project defines build, clean, and doctor tasks without loading MRuby" do
     old = Rake.application
     Rake.application = Rake::Application.new
     Picoruby::Cloudflare::Template::Project.new(root: @tmp).define_tasks
     assert_equal ["build"], Rake::Task[:default].prerequisites
+    assert Rake::Task.task_defined?(:clean)
     assert Rake::Task.task_defined?(:doctor)
     assert !defined?(MRuby::CrossBuild)
   ensure
     Rake.application = old
+  end
+
+  test "clean removes the PicoRuby build directory" do
+    build_dir = File.join(@tmp, ".picoruby-build")
+    FileUtils.mkdir_p(build_dir)
+    File.write(File.join(build_dir, "artifact"), "build output")
+
+    Picoruby::Cloudflare::Template::Project.new(root: @tmp).clean
+
+    assert !File.exist?(build_dir)
   end
 
   test "new command recommends Homebrew" do
