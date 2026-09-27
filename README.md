@@ -109,7 +109,7 @@ generated/worker/
   package.json            # private: true, type: module
   manifest.json           # Generator version, Worker revision, artifact SHA256 hashes
   runtime/
-    index.js              # createWorker({ app, bindingTypes })
+    index.js              # createWorker({ app, bindingTypes, rackEnv?, afterRequest? })
     runtime.js
     host-bridge.js
     durable-object.js
@@ -124,6 +124,12 @@ Their source locations are `templates/runtime/` and `templates/tools/`. The Work
 If that layout changes, update the exporter and configured Worker ref together.
 
 `createWorker` creates and closes a VM for each request, without sharing env between requests.
+Its optional `rackEnv(request, env, ctx)` callback supplies JSON-compatible
+request values to Ruby. `afterRequest(request, env, ctx, rackEnv, response)`
+receives a JSON-compatible snapshot of the Ruby Rack env and may replace the
+response. The generated `src/index.js` shows where to enable both callbacks.
+These callbacks require Worker ABI 8; the current default Worker pin predates
+them, so configure a compatible local checkout or published Worker revision.
 The generated runtime also exports `PicoRubyDurableObject` for Wrangler.
 The low-level `createRuntime` / `dispatch` / `closeRuntime` functions are also re-exported.
 If you explicitly reuse a VM, the runtime library serializes dispatches to that VM.

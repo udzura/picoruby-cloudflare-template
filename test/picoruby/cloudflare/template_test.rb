@@ -12,7 +12,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
   test "VERSION" do
     version = ::Picoruby::Cloudflare::Template::VERSION
     assert version.kind_of?(String)
-    assert Gem::Version.new(version).prerelease?
+    assert !Gem::Version.new(version).prerelease?
   end
 
   setup do
@@ -40,6 +40,12 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
     assert_not_include app, "Cloudflare::Queue"
     runtime_entry = File.read(File.join(__dir__, "../../../templates/runtime/index.js"))
     assert_include runtime_entry, 'console.error("PicoRuby Worker request failed", error)'
+    assert_include runtime_entry, "handleRequestWithOptions"
+    index = File.read(File.join(destination, "src/index.js"))
+    assert_include index, "const rackEnv = async (request, env, ctx)"
+    assert_include index, "const afterRequest = async (request, env, ctx, rackEnv, response)"
+    assert_include index, "// rackEnv,"
+    assert_include index, "// afterRequest,"
     assert !File.exist?(File.join(destination, ".picoruby-cloudflare-template.json"))
     config = File.read(File.join(destination, "build_config.rb"))
     assert_include config, "conf.cloudflare_worker! do |cf|"

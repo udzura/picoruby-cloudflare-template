@@ -124,6 +124,10 @@ Ruby/C・HAL・共通JS bridgeは実行時ライブラリが、このgemはテ�
 レイアウト変更時はexporterと設定済みWorker refを一緒に更新します。
 
 `createWorker` はリクエストごとにVMを生成・破棄し、異なるリクエストのenvを共有しません。
+任意の `rackEnv(request, env, ctx)` でRubyのRack envへJSON互換の値を渡せます。
+`afterRequest(request, env, ctx, rackEnv, response)` はRuby側のRack envのスナップショットを受け取り、レスポンスを差し替えられます。
+生成された `src/index.js` に両フックの有効化箇所があります。
+両フックはWorker ABI 8を必要とします。現在のデフォルトWorker pinはそれ以前のため、対応するローカルチェックアウトか公開済みrevisionを指定してください。
 生成runtimeはWrangler向けに `PicoRubyDurableObject` もexportします。
 低レベルの `createRuntime` / `dispatch` / `closeRuntime` も再exportします。
 明示的にVMを再利用した場合、同じVMへのdispatchは実行時ライブラリが直列化します。

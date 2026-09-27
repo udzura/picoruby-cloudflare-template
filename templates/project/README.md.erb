@@ -44,6 +44,17 @@ environment variables. The Worker source is pinned by the template gem; see its 
 Do not edit generated files. The generated Wasm, JS and app bytecode are one unit;
 use Wrangler to bundle them, not a plain Node.js import of `src/index.js`.
 
+`src/index.js` shows optional `rackEnv` and `afterRequest` hooks. Enable them in
+the `createWorker` options to add request-scoped, JSON-compatible values to
+Ruby's Rack env or inspect a snapshot after the app responds.
+`rackEnv(request, env, ctx)` returns an object. `afterRequest(request, env, ctx,
+rackEnv, response)` may return a replacement `Response` or `undefined` to keep
+the original response. Exceptions are logged by the generated Worker handler.
+These hooks require a Worker runtime with `handleRequestWithOptions` and ABI 8.
+Until the pinned Worker revision includes them, select a compatible checkout
+with `cf.picoruby_cloudflare_worker_wasm_mgem_dir` or override
+`cf.picoruby_cloudflare_worker_wasm_revision` with a published revision.
+
 Configure bindings in `wrangler.jsonc`; the build regenerates `bindings.js`.
 Ruby can use `env["cloudflare.env"].CACHE_KV` or
 `Cloudflare::KV.from_env(env, "CACHE_KV")`, and similarly `Cloudflare::Queue.from_env`.
