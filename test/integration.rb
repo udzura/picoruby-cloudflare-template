@@ -52,6 +52,17 @@ run.call("bundle", "exec", "rake", "doctor", "build")
 run.call("npx", "wrangler", "deploy", "--dry-run", "--outdir", ".wrangler/dry-run")
 run.call("node", File.join(__dir__, "integration_access.mjs"), project)
 
+# Exercise both hooks through the generated Worker entry point.
+entry = File.join(project, "src/index.js")
+source = File.read(entry)
+source = source.sub("  // rackEnv,", '  rackEnv: () => ({ "app.request_id": "hooked" }),')
+source = source.sub("  // afterRequest,", <<~JS.chomp)
+  afterRequest: (request, env, ctx, rackEnv, response) =>
+    new URL(request.url).pathname === "/hook" && env && ctx && rackEnv["app.request_id"] === "hooked"
+      ? new Response("hooked\\n") : response,
+JS
+File.write(entry, source)
+
 # Dry-run does not start workerd: catch compatibility-date and JSPI startup
 # failures with an actual local request, then verify custom-build hot reload.
 socket = TCPServer.new("127.0.0.1", 0)
@@ -84,6 +95,7 @@ begin
     end
   end
   await_response.call("/", "Hello from PicoRuby on Cloudflare!\n")
+  await_response.call("/hook", "hooked\n")
   await_response.call("/kv", "Hello from Cloudflare KV!\n")
   await_response.call("/queue", "Message sent to Cloudflare Queue!\n")
   await_response.call("/durable-object", "Hello from a Durable Object!\n")
