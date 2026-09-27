@@ -12,7 +12,7 @@ class Picoruby::Cloudflare::TemplateTest < Test::Unit::TestCase
   test "VERSION" do
     version = ::Picoruby::Cloudflare::Template::VERSION
     assert version.kind_of?(String)
-    assert Gem::Version.new(version).prerelease?
+    assert !Gem::Version.new(version).prerelease?
   end
 
   setup do
