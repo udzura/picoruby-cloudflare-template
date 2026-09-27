@@ -21,7 +21,7 @@ use a shell without `emsdk_env.sh` and unset `EMSDK`, `EM_CONFIG`, and `EM_CACHE
 The pinned Wrangler version is paired with compatibility date `2026-08-22`.
 Update and test them together; a dry-run alone does not start workerd.
 
-During development of the unpublished runtime, set these attributes in the
+To use a local runtime checkout during development, set these attributes in the
 `cloudflare_worker!` block in `build_config.rb`:
 
 ```ruby
@@ -51,9 +51,6 @@ Ruby's Rack env or inspect a snapshot after the app responds.
 rackEnv, response)` may return a replacement `Response` or `undefined` to keep
 the original response. Exceptions are logged by the generated Worker handler.
 These hooks require a Worker runtime with `handleRequestWithOptions` and ABI 8.
-Until the pinned Worker revision includes them, select a compatible checkout
-with `cf.picoruby_cloudflare_worker_wasm_mgem_dir` or override
-`cf.picoruby_cloudflare_worker_wasm_revision` with a published revision.
 
 Configure bindings in `wrangler.jsonc`; the build regenerates `bindings.js`.
 Ruby can use `env["cloudflare.env"].CACHE_KV` or
