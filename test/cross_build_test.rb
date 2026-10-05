@@ -181,3 +181,15 @@ class CrossBuildTest < Test::Unit::TestCase
     RUBY
   end
 end
+
+class CrossBuildTest
+  test "worker_export passes Pondro declarations to the deferred exporter" do
+    check_config <<~'RUBY'
+      conf = MRuby::CrossBuild.new
+      conf.cloudflare_worker!
+      declaration = { binding: "ACTORS", classes: ["Counter"], migration_tag: "actors-v2" }
+      conf.worker_export(app: "app.rb", output_dir: "generated/worker", wrangler_config: "wrangler.jsonc", pondro: declaration)
+      raise unless conf.instance_variable_get(:@cloudflare_export)[:pondro] == declaration
+    RUBY
+  end
+end

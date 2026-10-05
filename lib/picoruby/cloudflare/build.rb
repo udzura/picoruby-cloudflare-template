@@ -52,13 +52,13 @@ module Picoruby::Cloudflare::Template
       end
     end
 
-    def worker_export(app:, output_dir:, wrangler_config:, environment: nil, project_root: nil)
+    def worker_export(app:, output_dir:, wrangler_config:, environment: nil, project_root: nil, pondro: nil)
       raise Error, "Call cloudflare_worker! before worker_export" unless @cloudflare_configured
       raise Error, "worker_export may only be configured once per target" if @cloudflare_export
       config = cloudflare_build_config
       @cloudflare_export = {
         app: app, output_dir: output_dir, wrangler_config: wrangler_config,
-        environment: environment, project_root: project_root || File.dirname(config), config: config,
+        environment: environment, project_root: project_root || File.dirname(config), config: config, pondro: pondro,
       }
     end
 

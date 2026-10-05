@@ -87,3 +87,19 @@ so Wrangler and the binding registry select the same environment. Do not select 
 environment using only `--env`; custom build processes need `CLOUDFLARE_ENV` too.
 
 Commit `Gemfile.lock` and `package-lock.json`. Deploy explicitly with `npm run deploy`.
+
+## Optional Pondro objects
+
+Add the `picoruby-cloudflare-pondro` mgem and
+`pondro: { binding: "PONDRO", classes: ["Counter"] }` to `worker_export`.
+Use a Worker runtime with ABI 9 and register the same class/binding in Ruby.
+The template copies the host module and generates DO/plugin wiring without
+Pondro-specific edits to `src/index.js`.
+
+The source Wrangler config stays intact. The generated
+`.picoruby-cloudflare-wrangler.jsonc` adds the Pondro binding and SQLite migration,
+and points to a wrapper that retains the original entry's exports and handlers.
+`npm run dev`, `npm run check` and `npm run deploy` build first and use this config.
+For named environments, keep using `CLOUDFLARE_ENV` so export and Wrangler agree.
+Keep applied migration history in source configuration when changing an already
+deployed DO; the template does not infer deletion/rename migrations.

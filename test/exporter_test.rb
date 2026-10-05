@@ -156,4 +156,108 @@ class ExporterTest < Test::Unit::TestCase
     assert_raise(Picoruby::Cloudflare::Template::Error) { build }
     assert_equal "mine", File.read(original)
   end
+  def plugin_build(*paths)
+    Struct.new(:gems).new(paths.map { |path| Struct.new(:dir).new(path) })
+  end
+
+  def plugin_exporter(build)
+    Picoruby::Cloudflare::Template::Exporter.new(build, @tmp,
+      app: "app.rb", output_dir: "plugins-output", wrangler_config: "wrangler.jsonc",
+      project_root: @tmp, config: @config)
+  end
+
+  def make_plugin(id = "ai-sdk.openai", dependencies = { "ai" => "^7.0.123" })
+    path = File.join(@tmp, id)
+    FileUtils.mkdir_p(File.join(path, "templates"))
+    File.write(File.join(path, "templates/plugin.js"), "export const createPlugin = () => ({});\n")
+    File.write(File.join(path, "cloudflare-plugin.json"), JSON.generate({
+      format_version: 1, id: id, js_template: "templates/plugin.js", npm_dependencies: dependencies,
+    }))
+    path
+  end
+
+  test "plugins are discovered from resolved gems and unused plugins emit nothing" do
+    exporter = plugin_exporter(plugin_build)
+    assert_equal [], exporter.send(:worker_plugins)
+    assert_equal [], exporter.send(:export_plugins, [])
+    assert_false File.exist?(File.join(@tmp, "plugins-output/plugins.js"))
+
+    path = make_plugin
+    exporter = plugin_exporter(plugin_build(path))
+    plugins = exporter.send(:worker_plugins)
+    assert_equal ["ai-sdk.openai"], plugins.map { |plugin| plugin.fetch("id") }
+    artifacts = exporter.send(:export_plugins, plugins)
+    assert_equal ["runtime/plugins/ai-sdk.openai.js", "plugins.js"], artifacts
+    assert_include File.read(File.join(@tmp, "plugins-output/plugins.js")), "plugin0()"
+    assert_equal({ "ai" => "^7.0.123" }, exporter.send(:plugin_dependencies, plugins))
+
+    File.write(File.join(@tmp, "plugins-output/manifest.json"), JSON.generate({ sha256: artifacts.to_h { |name| [name, "digest"] } }))
+    exporter.send(:export_plugins, [])
+    artifacts.each { |name| assert_false File.exist?(File.join(@tmp, "plugins-output", name)) }
+  end
+
+  test "duplicate plugin ids and conflicting dependencies are rejected" do
+    path = make_plugin
+    assert_raise(Picoruby::Cloudflare::Template::Error) do
+      plugin_exporter(plugin_build(path, path)).send(:worker_plugins)
+    end
+    other = make_plugin("ai-sdk.other", { "ai" => "^6.0.0" })
+    assert_raise(Picoruby::Cloudflare::Template::Error) do
+      plugin_exporter(plugin_build(path, other)).send(:worker_plugins)
+    end
+  end
+
+  test "plugin templates cannot escape their gem directory" do
+    path = make_plugin
+    manifest = File.join(path, "cloudflare-plugin.json")
+    data = JSON.parse(File.read(manifest))
+    data["js_template"] = "../app.rb"
+    File.write(manifest, JSON.generate(data))
+    assert_raise(Picoruby::Cloudflare::Template::Error) do
+      plugin_exporter(plugin_build(path)).send(:worker_plugins)
+    end
+  end
+
+  test "plugin cleanup refuses symlink outputs" do
+    path = make_plugin
+    exporter = plugin_exporter(plugin_build(path))
+    artifacts = exporter.send(:export_plugins, exporter.send(:worker_plugins))
+    output = File.join(@tmp, "plugins-output")
+    File.write(File.join(output, "manifest.json"), JSON.generate({ sha256: artifacts.to_h { |name| [name, "digest"] } }))
+    File.unlink(File.join(output, "plugins.js"))
+    File.symlink(@app, File.join(output, "plugins.js"))
+    assert_raise(Picoruby::Cloudflare::Template::Error) { exporter.send(:export_plugins, []) }
+    assert_equal "APP", File.read(@app)
+  end
+
+end
+
+class ExporterTest
+  test "Pondro manifest requires configuration and emits configured factory arguments" do
+    path = make_plugin("pondro", {})
+    assert_raise(Picoruby::Cloudflare::Template::Error) do
+      plugin_exporter(plugin_build(path)).send(:worker_plugins)
+    end
+    exporter = Picoruby::Cloudflare::Template::Exporter.new(plugin_build(path), @tmp,
+      app: "app.rb", output_dir: "plugins-output", wrangler_config: "wrangler.jsonc",
+      project_root: @tmp, config: @config, pondro: { binding: "ACTORS", classes: ["Counter"] })
+    plugins = exporter.send(:worker_plugins)
+    exporter.send(:export_plugins, plugins)
+    assert_include File.read(File.join(@tmp, "plugins-output/plugins.js")), 'plugin0({"binding":"ACTORS","classes":["Counter"]})'
+    assert_equal({}, exporter.send(:plugin_dependencies, plugins))
+    missing = Picoruby::Cloudflare::Template::Exporter.new(plugin_build, @tmp,
+      app: "app.rb", output_dir: "plugins-output", wrangler_config: "wrangler.jsonc",
+      project_root: @tmp, config: @config, pondro: { classes: ["Counter"] })
+    assert_raise(Picoruby::Cloudflare::Template::Error) { missing.send(:worker_plugins) }
+  end
+
+  test "disabling Pondro removes its generated wrapper as well as plugin assets" do
+    exporter = plugin_exporter(plugin_build)
+    output = File.join(@tmp, "plugins-output")
+    FileUtils.mkdir_p(output)
+    File.write(File.join(output, "entry.js"), "generated")
+    File.write(File.join(output, "manifest.json"), JSON.generate({ sha256: { "entry.js" => "digest" } }))
+    exporter.send(:export_plugins, [])
+    assert_false File.exist?(File.join(output, "entry.js"))
+  end
 end
