@@ -17,6 +17,7 @@ MRuby::CrossBuild.new("worker") do |conf|
     output_dir: "generated/worker",
     wrangler_config: "wrangler.jsonc",
     environment: ENV["CLOUDFLARE_ENV"],
+    # With the Pondro mgem: pondro: { binding: "PONDRO", classes: ["Counter"] },
     project_root: __dir__,
   )
 end

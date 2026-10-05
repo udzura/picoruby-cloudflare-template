@@ -53,6 +53,17 @@ module Picoruby::Cloudflare::Template
       raise Error, "PicoRuby build failed" unless system(env, *command, chdir: root)
     end
 
+    def wrangler(command, *arguments)
+      build
+      executable = File.join(@root, "node_modules/.bin/wrangler")
+      raise Error, "Wrangler is missing; run npm install in #{@root}" unless File.executable?(executable)
+      generated = File.join(@root, ".picoruby-cloudflare-wrangler.jsonc")
+      config = File.file?(generated) ? generated : File.join(@root, "wrangler.jsonc")
+      args = [executable, command, "--config", config, *arguments]
+      args.concat(["--env", ENV["CLOUDFLARE_ENV"]]) if ENV["CLOUDFLARE_ENV"] && !ENV["CLOUDFLARE_ENV"].empty?
+      raise Error, "Wrangler #{command} failed" unless system(*args, chdir: @root)
+    end
+
     def clean
       FileUtils.rm_rf(File.join(@root, ".picoruby-build"))
     end
@@ -64,6 +75,12 @@ module Picoruby::Cloudflare::Template
       task(:clean) { clean }
       desc "Check local Worker build prerequisites"
       task(:doctor) { doctor }
+      desc "Build and run the Worker with generated optional integrations"
+      task(:dev) { wrangler("dev") }
+      desc "Build and validate the Worker bundle without deploying"
+      task(:check) { wrangler("deploy", "--dry-run") }
+      desc "Build and deploy the Worker with generated optional integrations"
+      task(:deploy) { wrangler("deploy") }
       task default: :build
     end
   end

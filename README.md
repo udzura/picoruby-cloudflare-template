@@ -235,3 +235,78 @@ Rerun the integration tests when PicoRuby or the mruby submodule's build API cha
 ## License
 
 This gem is available under the [MIT License](LICENSE).
+
+### Optional Worker plugins
+
+At build-time export, resolved mrbgems containing `cloudflare-plugin.json` are
+recognized automatically. The manifest declares `format_version: 1`, a unique
+`id`, a gem-relative `js_template`, and `npm_dependencies`. The template must
+export `createPlugin()` returning the runtime's plugin definition. Selected
+modules and their registration are emitted into `generated/worker`; absent
+plugins emit no module or SDK imports. Removing a gem removes its previously
+exported plugin files. The runtime must support `createCloudflareBindings`'s
+third `{ plugins }` argument.
+
+For the local OpenAI mrbgem, add this to `build_config.rb`:
+
+```ruby
+conf.gem gemdir: "/Users/udzura/ghq/github.com/udzura/picoruby-ai-sdk-openai"
+```
+
+After `bundle exec rake build`, run `npm install --prefix generated/worker` to
+install its generated dependency declarations. No packages are installed by the
+exporter; missing dependencies fail module resolution when bundling/running JS.
+Use `Rackup::Handler::CloudflareWorker.build` with
+`use AISDK::OpenAI::Middleware` to expose `env["ai-sdk.openai"]` in Ruby.
+
+### Pondro Durable Objects
+
+With the separate `picoruby-cloudflare-pondro` mgem, declare the binding and
+Ruby class allowlist in `build_config.rb`:
+
+```ruby
+conf.gem gemdir: "/path/to/picoruby-cloudflare-pondro"
+conf.worker_export(
+  app: "app.rb", output_dir: "generated/worker",
+  wrangler_config: "wrangler.jsonc", project_root: __dir__,
+  environment: ENV["CLOUDFLARE_ENV"],
+  pondro: { binding: "PONDRO", classes: ["Counter"] },
+)
+```
+
+Register the same class/binding in Ruby with `Pondro.register("Counter", Counter,
+binding: "PONDRO")`. The template detects the mgem's `cloudflare-plugin.json`,
+copies its host module, registers the configured caller plugin, and emits a DO
+wrapper in `generated/worker/entry.js`. The wrapper re-exports the original
+Worker entry, including its default handler and existing session DO exports.
+No Pondro-specific changes to `src/index.js` are needed.
+
+Pondro requires Worker ABI 9; the current built-in Worker pin predates that
+extension. Configure the compatible local `picoruby_cloudflare_worker_wasm_mgem_dir`
+until an ABI 9 revision is published. The exporter rejects an incompatible
+runtime or a missing Pondro mgem before emitting the integration.
+
+The source `wrangler.jsonc` remains intact. The exporter writes a generated
+`.picoruby-cloudflare-wrangler.jsonc` beside it in the project root, with the
+wrapper as `main`, the Pondro binding and a SQLite creation migration. Relative
+paths, `.dev.vars`, existing bindings and migrations retain their meaning.
+An existing matching Pondro binding/migration is reused; conflicts fail with an
+error. The optional `class_name` (default `PondroDurableObject`) and
+`migration_tag` (default `pondro-v1`) fields customize the generated declaration.
+`wrangler_config` must be in `project_root` for this integration.
+
+Use `bundle exec rake dev`, `check`, or `deploy`; these build first and choose
+the generated config automatically. New projects' npm scripts call those tasks.
+For an older project, use these tasks or update its npm scripts accordingly.
+Calling `wrangler dev` against the original config bypasses the generated DO.
+`CLOUDFLARE_ENV=staging` selects the same environment for export and Wrangler.
+
+Removing both the Pondro mgem and `pondro:` declaration removes the generated
+plugin, wrapper and effective config on the next build. Add
+`/.picoruby-cloudflare-wrangler.jsonc` to older projects' `.gitignore`.
+For an already deployed Worker, keep applied migration history in the source
+Wrangler config before changing/removing the generated DO declaration. The
+exporter preserves that history; it does not generate deletion/rename migrations.
+
+The full local example and actual Wasm/workerd tests are in the Worker runtime
+repository's `examples/pondro` directory. Pondro adds no npm SDK dependency.

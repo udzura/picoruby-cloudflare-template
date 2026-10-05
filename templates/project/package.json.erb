@@ -5,8 +5,9 @@
   "scripts": {
     "build": "bundle exec rake build",
     "generate:bindings": "bundle exec rake build",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev": "bundle exec rake dev",
+    "check": "bundle exec rake check",
+    "deploy": "bundle exec rake deploy"
   },
   "devDependencies": {
     "jsonc-parser": "3.2.0",
